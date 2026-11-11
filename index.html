@@ -38,13 +38,13 @@ b{font-weight:600}
 
 .sheet{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:16px 14px 12px;margin-bottom:14px}
 .grid{display:flex;flex-wrap:wrap;align-items:flex-end;row-gap:6px;padding:1px}
-.u{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;max-width:100%}
-.cs{display:flex;flex-wrap:wrap;justify-content:center}
+.u{display:flex;flex-direction:column;align-items:flex-start;flex:0 0 auto;max-width:100%}
+.cs{display:flex;flex-wrap:wrap;justify-content:flex-start}
 .c{position:relative;display:grid;place-items:center;width:var(--cell);height:var(--cell);border:1px solid var(--grid);margin:0 -1px -1px 0;font-size:calc(var(--cell)*.62);line-height:1;color:var(--ink)}
 .c.blank{border-color:var(--accent);background:var(--tint);z-index:1}
 .c.fill{border-color:var(--good);color:var(--good);font-weight:700;z-index:1;animation:stamp .22s ease-out}
 .c.wide{width:auto;min-width:var(--cell);padding:0 5px;font-size:calc(var(--cell)*.5)}
-.rt{font-size:11px;line-height:1.15;color:var(--mute);padding-bottom:2px;white-space:nowrap;text-align:center}
+.rt{display:flex;justify-content:center;font-size:11px;line-height:1.15;color:var(--mute);padding-bottom:2px;white-space:nowrap}
 .rt .pen{color:var(--pen);font-size:14px;text-decoration:line-through;text-decoration-thickness:2px;animation:fade .25s ease-out}
 .read{font-family:var(--jp);font-size:1rem;color:var(--mute);margin-top:10px}
 .ru{margin-top:14px;color:var(--mute)}
@@ -94,6 +94,16 @@ label{font-size:.85rem;color:var(--mute)}
 #tabs b{font:normal 1.3rem/1.2 var(--jp)}
 #tabs button.on{color:var(--accent);border-top-color:var(--accent);font-weight:600}
 
+.mas{display:flex;align-items:flex-end;gap:10px;margin:4px 0 14px}
+.mas img{width:104px;height:auto;flex:0 0 auto;transform-origin:50% 100%}
+.mas .say{position:relative;background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:34px;font-size:.92rem}
+.mas .say:before{content:"";position:absolute;left:-7px;bottom:14px;width:12px;height:12px;background:var(--sheet);border-left:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
+.mini{display:flex;align-items:flex-end;gap:10px}
+.mini img{width:54px;height:auto;flex:0 0 auto;transform-origin:50% 100%}
+.mini.ok img{animation:hop .45s ease-out}
+.mini.no img{animation:shake .4s ease-out}
+@keyframes hop{0%{transform:none}35%{transform:translateY(-14px) rotate(-4deg)}70%{transform:translateY(0) rotate(3deg)}100%{transform:none}}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-6px) rotate(-4deg)}40%{transform:translateX(6px) rotate(4deg)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
 .tile{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;color:var(--ink);font:inherit}
 .tile .ic{font:600 1.9rem/1 var(--jp);width:44px;text-align:center;color:var(--accent)}
 .tile .tx{flex:1}.tile .tx b{display:block}.tile .tx span{font-size:.85rem;color:var(--mute)}
@@ -144,6 +154,47 @@ label{font-size:.85rem;color:var(--mute)}
     'まで': '«До»: конец во времени или в пространстве.',
     'か': 'Вопросительная частица в конце предложения.'
   };
+  var USES = {
+    "wa_topic": "Тема: то, о чём говорим. Ставится после слова-темы, а дальше сообщается, что о нём сказать. Читается «ва».",
+    "wa_contrast": "Противопоставление: ставится после слова, которое сравнивают с другим («мясо ем, а рыбу — нет»). Читается «ва».",
+    "ga_like": "Ставится после того, что нравится, не нравится, понятно, нужно или получается: すき, きらい, じょうず, へた, わかる, ほしい, できる. По-русски это похоже на дополнение («люблю кошек»), но по-японски тут が.",
+    "ga_exist": "Ставится после того, что есть или у кого что есть: あります, います, ありません.",
+    "ga_subj": "Подлежащее в сообщении о событии: идёт дождь, пришёл поезд, плачет ребёнок. Новость «что-то происходит» — с が.",
+    "ga_q": "Если подлежащее — вопросительное слово (だれ, 何, どれ), ставится が, а не は.",
+    "wo_obj": "Ставится после того, на что направлено действие: что ем, читаю, включаю, открываю. Читается «о».",
+    "wo_path": "Ставится после места, по которому проходят: 道を渡る, 橋を渡る. Читается «о».",
+    "ni_time": "Ставится после точного времени: час (7時), день недели, месяц.",
+    "ni_freq": "Ставится после периода, когда считаем частоту: «три раза в неделю», «раз в день».",
+    "ni_dest": "Ставится после пункта назначения: куда идут, приезжают, входят, ходят регулярно.",
+    "ni_ride": "Ставится после того, во что или на что садятся: поезд, автобус, стул.",
+    "ni_loc": "Ставится после места, где что-то находится или кто-то живёт: あります, います, 住んでいます.",
+    "ni_target": "Ставится после адресата, к кому направлено действие: кому звоню, пишу, дарю, кого спрашиваю, с кем встречаюсь.",
+    "ni_put": "Ставится после места, куда что-то кладут, ставят или добавляют.",
+    "ni_purpose": "Ставится после действия или занятия, ради которого идут или приезжают: 買い物に行く, 勉強に来る.",
+    "ni_become": "Ставится после того, кем или чем становятся (なる).",
+    "he_dir": "Ставится после пункта назначения: куда направлено движение. Читается «э». В таких предложениях вместо へ подходит и に.",
+    "de_place": "Ставится после места, где происходит действие: учусь в школе, ем в ресторане, работаю в компании.",
+    "de_means": "Ставится после средства: чем делаю, на чём еду, на каком языке говорю.",
+    "de_total": "Ставится после состава или суммы: «в одиночку», «всего».",
+    "to_with": "Ставится после того, с кем делают что-то вместе: «с братом», «с мамой».",
+    "to_and": "Ставится между перечисляемыми словами и значит «и» (полный список): хлеб и молоко.",
+    "to_quote": "Ставится после цитаты или мысли, перед глаголом 言う (сказать).",
+    "mo_also": "Ставится вместо は, が или を, когда нужно «тоже»: после того, что тоже подходит.",
+    "mo_neg": "С отрицанием значит «ни один, совсем нет»: 一人もいません.",
+    "no_poss": "Ставится после владельца: слева хозяин, справа то, что ему принадлежит («моя книга»).",
+    "no_attr": "Соединяет два существительных: левое уточняет правое (какой? откуда? о чём?): 日本語の先生, 英語の本.",
+    "no_loc": "Ставится между предметом и словом места: 机の上, 駅の近く. Слева то, относительно чего, справа слово места.",
+    "kara_start": "Ставится после начальной точки: времени или места. «С 9 часов», «из Токио», «отсюда».",
+    "kara_person": "Ставится после человека, от которого что-то получили: «от мамы», «у учителя».",
+    "made": "Ставится после конечной точки: времени или места. «До пяти», «до школы».",
+    "ya": "Неполный список: называем несколько примеров из многих и подразумеваем «и так далее».",
+    "ka_q": "В конце предложения превращает его в вопрос.",
+    "ka_or": "Между вариантами значит «или»: кофе или чай."
+  };
+  function ruleFor(it, p, i) {
+    var m = /^b(\d+)$/.exec(it.id || ''), k = m && window.USE && window.USE[+m[1]];
+    return (i === 0 && k && USES[k]) || RULES[p] || '';
+  }
   var MSG_OK = ['Верно.', 'Точно!', 'Да, именно так.', 'В точку.', 'Чисто сработано.', 'Есть!'];
   var MSG_BAD = ['Мимо.', 'Не то.', 'Тут легко запутаться.', 'Почти, но нет.', 'Ошибка — зато теперь запомнится.'];
 
@@ -280,14 +331,14 @@ label{font-size:.85rem;color:var(--mute)}
     var units = [], prev = null, last = null;
     parts.forEach(function (p) {
       if (p.k) {
-        prev = { rt: ruby && p.rd ? esc(p.rd) : '', cells: Array.from(p.s).map(function (ch) { return cellHtml(ch); }), room: OKU };
+        prev = { rn: Array.from(p.s).length, rt: ruby && p.rd ? esc(p.rd) : '', cells: Array.from(p.s).map(function (ch) { return cellHtml(ch); }), room: OKU };
         units.push(prev);
         last = prev;
         return;
       }
       Array.from(p.s).forEach(function (ch) {
         if (ch === '＿') {
-          last = { rt: wrong ? '<s class="pen">' + esc(wrong) + '</s>' : '', cells: [blankCell(fill)] };
+          last = { rn: 1, rt: wrong ? '<s class="pen">' + esc(wrong) + '</s>' : '', cells: [blankCell(fill)] };
           units.push(last);
           prev = null;
         } else if (/[。、！？]/.test(ch) && last) {
@@ -304,7 +355,7 @@ label{font-size:.85rem;color:var(--mute)}
       });
     });
     var html = units.map(function (u) {
-      return '<span class="u">' + (u.rt ? '<span class="rt">' + u.rt + '</span>' : '') + '<span class="cs">' + u.cells.join('') + '</span></span>';
+      return '<span class="u">' + (u.rt ? '<span class="rt" style="width:calc((var(--cell) - 1px) * ' + u.rn + ' + 1px)">' + u.rt + '</span>' : '') + '<span class="cs">' + u.cells.join('') + '</span></span>';
     }).join('');
     return { html: '<div class="grid" lang="ja">' + html + '</div>', ruby: ruby };
   }
@@ -373,13 +424,13 @@ label{font-size:.85rem;color:var(--mute)}
     else if (!cur.hint) h += '<button class="link" data-act="hint">Подсказка</button>';
     h += '</div></section>';
     if (!cur.done) {
-      if (cur.hint) h += '<div class="note">' + esc(RULES[it.a[0]] || '') + '</div>';
+      if (cur.hint) h += '<div class="note">' + esc(ruleFor(it, it.a[0], 0)) + '</div>';
       h += '<div class="opts">' + ['は','が','を','に','で','へ','と','も','の','や','か','から','まで'].map(function (p) {
         return '<button class="key' + (p.length > 1 || p === 'か' ? ' w2' : '') + '" lang="ja" data-act="ans" data-p="' + p + '">' + p + '</button>';
       }).join('') + '</div>';
     } else {
-      var rules = it.a.map(function (p) { return '<b lang="ja">' + esc(p) + '</b> — ' + esc(RULES[p] || ''); }).join('<br>');
-      h += '<div class="res ' + (cur.ok ? 'ok' : 'no') + '"><div class="verdict">' + esc(cur.msg) + '</div>';
+      var rules = it.a.map(function (p, i) { return '<b lang="ja">' + esc(p) + '</b> — ' + esc(ruleFor(it, p, i)); }).join('<br>');
+      h += '<div class="res ' + (cur.ok ? 'ok' : 'no') + '"><div class="mini ' + (cur.ok ? 'ok' : 'no') + '"><img src="mascot.png" alt="" width="54"><div class="verdict">' + esc(cur.msg) + '</div></div>';
       if (!cur.ok) h += '<div>Ты выбрал <b lang="ja">' + esc(cur.chosen) + '</b>, а здесь нужно <b lang="ja">' + esc(it.a.join(' или ')) + '</b>.</div><div class="small">Ошибка записана в дневник.</div>';
       else if (it.a.length > 1) h += '<div class="small">Здесь подходят: ' + esc(it.a.join(', ')) + '.</div>';
       h += '<div class="rule">' + rules + '</div>';
@@ -405,8 +456,15 @@ label{font-size:.85rem;color:var(--mute)}
     var all = allItems(), m = all.filter(function (it) { var s = stats[it.id]; return s && s.c >= 3; }).length;
     return { m: m, n: all.length };
   }
+  function greet() {
+    var td = days[dayKey()] || { n: 0 }, g = settings.goal || 0;
+    if (g && td.n >= g) return 'На сегодня цель выполнена. Можно остановиться, а можно ещё чуть-чуть.';
+    if (td.n > 0) return 'Уже ' + td.n + ' ответов сегодня. Продолжим?';
+    return streak() > 1 ? 'Серия ' + streak() + ' дн. Не прерываем?' : 'Привет! Начнём с пары предложений?';
+  }
   function renderHome() {
     var h = noticeHtml() + meterHtml(), mc = masteredCount(), k = allItems().filter(isActive).length;
+    h += '<div class="mas"><img src="mascot.png" alt="" width="104"><div class="say">' + esc(greet()) + '</div></div>';
     h += '<button class="tile" data-act="open" data-m="all"><span class="ic" lang="ja">は</span><span class="tx"><b>Частицы</b><span>Освоено ' + mc.m + ' из ' + mc.n + ' предложений</span></span></button>';
     if (k) h += '<button class="tile" data-act="open" data-m="mistakes"><span class="ic" lang="ja">誤</span><span class="tx"><b>Мои ошибки</b><span>' + k + ' в работе — повтори, пока свежо</span></span></button>';
     h += '<button class="tile" disabled><span class="ic" lang="ja">語</span><span class="tx"><b>Слова</b><span>Скоро</span></span></button>';
@@ -438,13 +496,12 @@ label{font-size:.85rem;color:var(--mute)}
     h += '<div class="card"><h3>Точность по частицам</h3>';
     if (!ps.length) h += '<div class="small">Появится после первых ответов.</div>';
     else {
-      ps.sort(function (a, b) { return (by[a].w / by[a].seen) - (by[b].w / by[b].seen) || by[b].seen - by[a].seen; });
-      ps.reverse();
+      ps.sort(function (a, b) { return (1 - by[a].w / by[a].seen) - (1 - by[b].w / by[b].seen) || by[b].seen - by[a].seen; });
       h += ps.map(function (p) {
-        var o = by[p], pc = Math.max(0, Math.round((1 - Math.min(1, o.w / o.seen)) * 100));
-        return '<div class="pb"><span class="k" lang="ja">' + esc(p) + '</span><span class="t"><i style="width:' + pc + '%"></i></span><span class="v">' + pc + '% · ' + o.seen + '</span></div>';
+        var o = by[p], ok = Math.max(0, o.seen - o.w), pc = Math.round(ok / o.seen * 100);
+        return '<div class="pb"><span class="k" lang="ja">' + esc(p) + '</span><span class="t"><i style="width:' + pc + '%"></i></span><span class="v">' + ok + ' из ' + o.seen + '</span></div>';
       }).join('');
-      h += '<div class="small">Сверху те, где ошибок меньше. Внизу то, что стоит подтянуть.</div>';
+      h += '<div class="small">Полоска — доля верных ответов, справа — сколько верно из всех. Сверху самые слабые частицы, внизу самые уверенные.</div>';
     }
     return h + '</div>';
   }
