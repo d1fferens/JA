@@ -263,6 +263,12 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
 .achip.on{background:var(--good);color:var(--ongood)}
 .ard{margin:4px 0 6px}
 #f-live{margin-bottom:14px}
+.lrow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.lrow .link{padding:0 0 4px}
+.mine{color:var(--acc);font-weight:700}
+.nwh{margin-bottom:4px}
+.nwh+.item{border-top:0;padding-top:0}
+.card .item:only-of-type{padding-bottom:4px}
 .ardl{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:1rem}
 .ardl span{font:700 1.1rem var(--jp);min-width:3em}
 .ardl input{margin:4px 0}
@@ -372,6 +378,8 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
   var wstats = LS.get('jp_words', {});
   var vstats = LS.get('jp_verbs', {});
   var bstats = LS.get('jp_build', {});
+  // Мои слова: незнакомые слова из своих фраз, которым дали перевод. { слово: {r, ru} } или { слово: {skip: 1} } — «это не слово».
+  var mywords = LS.get('jp_mywords', {}), myVer = 0, nwDraft = {};
   var tab = 'home', mode = 'all', cur = null, notice = '', resetArmed = false;
   var wmode = 'quiz', vmode = 'mean', wq = null, vq = null, bq = null;
   var $app = document.getElementById('app');
@@ -572,7 +580,7 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
   }
   function saveAll() {
     LS.set('jp_stats', stats); LS.set('jp_custom', custom); LS.set('jp_days', days); LS.set('jp_settings', settings);
-    LS.set('jp_words', wstats); LS.set('jp_verbs', vstats); LS.set('jp_build', bstats);
+    LS.set('jp_words', wstats); LS.set('jp_verbs', vstats); LS.set('jp_build', bstats); LS.set('jp_mywords', mywords);
   }
   // Ответ в любом разделе идёт в цель дня и серию. Возвращает true, когда цель только что выполнена.
   function countDay(ok) {
@@ -751,6 +759,50 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     return out;
   }
   // TOKENS-END
+  // Свои фразы режутся тем же словарём плюс мои слова. Встроенные предложения мои слова не трогают.
+  var MDICT = null;
+  function myKeys() { return Object.keys(mywords).filter(function (w) { return mywords[w] && !mywords[w].skip && mywords[w].ru; }); }
+  // Другие вежливые формы известных глаголов (行きます → 行きました, 行きません, 行きたい…) — для своих фраз.
+  var EXF = null, MASU_SUF = ['ました', 'ません', 'ませんでした', 'ましょう', 'たい', 'たくない', 'たかった'];
+  function extraForms() {
+    if (EXF) return EXF;
+    EXF = {};
+    (window.VERBS || []).forEach(function (v) {
+      v.f.forEach(function (f) {
+        if (!/ます$/.test(f)) return;
+        var st = f.slice(0, -2);
+        MASU_SUF.forEach(function (sx) { var w = st + sx; if (v.f.indexOf(w) < 0 && !EXF[w]) EXF[w] = { v: v, m: f, sx: sx }; });
+      });
+    });
+    return EXF;
+  }
+  function tokenizeMine(text) {
+    var keys = myKeys().concat(Object.keys(extraForms()));
+    if (!DICT) DICT = buildDict();
+    if (!MDICT || MDICT.v !== myVer) {
+      var d = {}, max = DICT.max;
+      for (var k in DICT.d) d[k] = 1;
+      keys.forEach(function (w) { d[w] = 1; max = Math.max(max, w.length); });
+      MDICT = { d: d, max: max, v: myVer };
+    }
+    var save = DICT;
+    DICT = MDICT;
+    try { return tokenize(text); } finally { DICT = save; }
+  }
+  // свои фразы, нарезанные на слова (одна фраза с несколькими пропусками — одна запись first)
+  var CUST = null;
+  function custData() {
+    var key = custom.map(function (c) { return c.id; }).join() + '|' + myVer;
+    if (CUST && CUST.key === key) return CUST;
+    var seen = {}, list = [];
+    custom.forEach(function (it) {
+      var t = it.t.replace('＿', it.a[0]);
+      list.push({ it: it, t: t, tk: tokenizeMine(t), first: !seen[t] });
+      seen[t] = 1;
+    });
+    CUST = { key: key, list: list };
+    return CUST;
+  }
 
   // ---------- озвучка ----------
   function speak(text) {
@@ -932,8 +984,8 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     var pp = mc.n ? Math.round(mc.m / mc.n * 100) : 0;
     h += '<button class="t wide c1" data-act="open" data-m="all" data-key="practice"><span class="i" lang="ja">は</span><span class="tx"><b>Частицы</b><span class="ts">Освоено ' + cnt(mc.m) + ' из ' + mc.n + '</span><span class="tbar"><i style="width:' + pp + '%" data-w></i></span></span><span class="num" style="font-size:24px">' + cnt(pp) + '%</span></button>';
     if (k) h += '<button class="t wide c4" data-act="open" data-m="mistakes" data-key="mistakes"><span class="i" lang="ja">誤</span><span class="tx"><b>Мои ошибки</b><span class="ts">' + k + ' в работе — повтори, пока свежо</span></span></button>';
-    var lw = learned(wstats, V.words), lv = learned(vstats, V.verbs);
-    h += '<button class="t c2" data-tab="words" data-key="words"><span class="i" lang="ja">語</span><b>Слова</b><span class="ts">' + cnt(lw) + ' из ' + V.words.length + '</span><span class="tbar"><i style="width:' + Math.round(lw / Math.max(1, V.words.length) * 100) + '%" data-w></i></span></button>';
+    var WA = wordsAll(), lw = learned(wstats, WA), lv = learned(vstats, V.verbs);
+    h += '<button class="t c2" data-tab="words" data-key="words"><span class="i" lang="ja">語</span><b>Слова</b><span class="ts">' + cnt(lw) + ' из ' + WA.length + '</span><span class="tbar"><i style="width:' + Math.round(lw / Math.max(1, WA.length) * 100) + '%" data-w></i></span></button>';
     h += '<button class="t c3" data-tab="verbs" data-key="verbs"><span class="i" lang="ja">動</span><b>Глаголы</b><span class="ts">' + cnt(lv) + ' из ' + V.verbs.length + '</span><span class="tbar"><i style="width:' + Math.round(lv / Math.max(1, V.verbs.length) * 100) + '%" data-w></i></span></button>';
     var built = 0, bs = 0, bw = 0;
     for (var id in bstats) { if (bstats[id].c > 0) built++; bs += bstats[id].seen || 0; bw += bstats[id].w || 0; }
@@ -996,7 +1048,54 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
   // Фраза режется на слова тем же словарём, что и «Собери предложение». Чтение хираганой собирается само:
   // для слов из приложения — из встроенных предложений, остальное — из скобок в тексте (図書館（としょかん）)
   // или из коротких полей «как читается». Из одной фразы можно сделать несколько вопросов.
-  var addq = { text: '', ru: '', blanks: [], alts: {}, rd: {}, from: 'more' };
+  var addq = { text: '', ru: '', blanks: [], alts: {}, rd: {}, from: 'more', queue: [] };
+  function freshAdd() { return { text: '', ru: '', blanks: [], alts: {}, rd: {}, from: addq.from, queue: [] }; }
+  // Вставка из учебника или субтитров: японская строка и перевод вместе — в одной строке («日本語 — перевод») или строкой ниже.
+  // Несколько японских строк — очередь: после «Сохранить» открывается следующая.
+  var CYR = /[А-Яа-яЁё]/, JPC = /[ぁ-ゖァ-ヺ一-鿿々]/;
+  function splitPaste(raw) {
+    var items = [];
+    String(raw).split(/\r?\n/).forEach(function (line) {
+      line = line.trim();
+      if (!line) return;
+      var ci = line.search(CYR), jp = ci < 0 ? line : line.slice(0, ci), ru = ci < 0 ? '' : line.slice(ci).trim();
+      jp = jp.replace(/^[\s\-–—:|/／・>»]+|[\s\-–—:|/／・(（«"]+$/g, '').trim();
+      if (JPC.test(jp)) items.push({ jp: jp, ru: ru.replace(/[)）»"]+$/, '') });
+      else if (ru && items.length && !items[items.length - 1].ru) items[items.length - 1].ru = ru;
+    });
+    return items;
+  }
+  function applyPaste(raw) {
+    var items = splitPaste(raw);
+    if (!items.length) return false;
+    var q = addq.queue || [];
+    addq = freshAdd();
+    addq.text = items[0].jp; addq.ru = items[0].ru;
+    addq.queue = items.slice(1).concat(q);
+    addCache = null;
+    return true;
+  }
+  function autoTranslate() {
+    var m = addModel(), msg = document.getElementById('f-msg');
+    if (!m.s) { msg.textContent = 'Сначала вставь фразу.'; return; }
+    if (typeof fetch === 'undefined') return;
+    msg.textContent = 'Перевожу…';
+    var text = m.s;
+    fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=ru&dt=t&q=' + encodeURIComponent(text))
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        var t = ((d && d[0]) || []).map(function (x) { return x && x[0] || ''; }).join('').trim();
+        if (!t) throw new Error('empty');
+        if (addModel().s !== text) return;   // фразу уже поменяли
+        addq.ru = t;
+        var f = document.getElementById('f-ru');
+        if (f) f.value = t;
+        msg.textContent = 'Это черновик от Google Переводчика — проверь его. Бывает, что «читаю» превращается в «читайте», а «до» у まで теряется.';
+      })
+      .catch(function () {
+        msg.textContent = navigator.onLine === false ? 'Нет интернета — перевод недоступен, впиши сам.' : 'Не получилось перевести. Попробуй ещё раз или впиши сам.';
+      });
+  }
   var READ = null;
   function readDict() {
     if (READ) return READ;
@@ -1010,6 +1109,8 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     (window.WORDS || []).forEach(function (x) {
       if (!x.re) [].concat(x.w).forEach(function (w) { if (!READ[w] && KANJI_RE.test(w)) READ[w] = firstReading(x.r); });
     });
+    var X = extraForms();
+    for (var w in X) if (!READ[w] && READ[X[w].m]) READ[w] = READ[X[w].m].slice(0, -2) + X[w].sx;
     return READ;
   }
   var KANJI_RUN = /[一-鿿々]+/g;
@@ -1020,7 +1121,7 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     var s = String(addq.text)
       .replace(/([一-鿿々]+)[ 　]*[（(［\[]([ぁ-ゖァ-ヺー]+)[）)］\]]/g, function (m, k, r) { paren[k] = r; return k; })
       .replace(/[\s　_＿]+/g, '');
-    var toks = s ? tokenize(s) : [], pos = [], at = 0;
+    var toks = s ? tokenizeMine(s) : [], pos = [], at = 0;
     toks.forEach(function (t) { var i = s.indexOf(t.s, at); pos.push(i); at = i + t.s.length; });
     addCache = { text: addq.text, s: s, toks: toks, pos: pos, paren: paren };
     return addCache;
@@ -1104,10 +1205,11 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     if (b) b.textContent = saveLabel();
   }
   function renderAdd() {
-    var h = noticeHtml() + '<div class="top"><button class="bk" data-tab="' + addq.from + '" aria-label="Назад">‹</button><h2>Своё предложение</h2></div><div class="card">';
-    h += '<label for="f-t">Фраза целиком — как в учебнике или субтитрах</label><textarea id="f-t" rows="2" lang="ja" placeholder="図書館で本を読みます。">' + esc(addq.text) + '</textarea>';
+    var h = noticeHtml() + '<div class="top"><button class="bk" data-tab="' + addq.from + '" aria-label="Назад">‹</button><h2>Своё предложение</h2></div>';
+    if (addq.queue.length) h += '<div class="note">В списке ещё ' + plural(addq.queue.length, 'фраза', 'фразы', 'фраз') + ' — после «Сохранить» откроется следующая. <button class="link" data-act="askip" style="padding:0">Пропустить эту</button></div>';
+    h += '<div class="card"><label for="f-t">Фраза целиком — как в учебнике или субтитрах. Можно вставить вместе с переводом или сразу несколько строк.</label><textarea id="f-t" rows="2" lang="ja" placeholder="図書館で本を読みます。">' + esc(addq.text) + '</textarea>';
     h += '<div id="f-live">' + addLiveHtml() + '</div>';
-    h += '<label for="f-ru">Перевод</label><input type="text" id="f-ru" value="' + esc(addq.ru) + '" placeholder="Читаю книгу в библиотеке.">';
+    h += '<div class="lrow"><label for="f-ru">Перевод</label><button class="link" data-act="atr">Перевести автоматически</button></div><input type="text" id="f-ru" value="' + esc(addq.ru) + '" placeholder="Как это по-русски">';
     h += '<div class="small" id="f-msg"></div><button class="primary" data-act="add" id="f-save">' + saveLabel() + '</button></div>';
     h += '<h3>Мои предложения (' + custom.length + ')</h3>';
     if (!custom.length) h += '<div class="card small">Пока нет. Добавляй фразы из учебника, субтитров или песен.</div>';
@@ -1219,7 +1321,7 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
           if (re ? re.test(s) : vars.indexOf(s) >= 0) { ex.push({ i: i, j: j }); break; }
         }
       });
-      return { id: vars[0], w: vars[0], alt: vars.slice(1), r: x.r, ru: x.ru, k: x.k, ex: ex };
+      return { id: vars[0], w: vars[0], alt: vars.slice(1), r: x.r, ru: x.ru, k: x.k, ex: ex, re: re };
     });
     var verbs = [], forms = [], seen = {};
     (window.VERBS || []).forEach(function (v) {
@@ -1239,7 +1341,7 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
   }
   // пример из предложений приложения с подсвеченным словом
   function exHtml(e) {
-    var s = window.BASE[e.i], t = filled(e.i), tk = vocab().segs[e.i], at = 0, st = -1, en = -1;
+    var s = e.c ? e.c.it : window.BASE[e.i], t = e.c ? e.c.t : filled(e.i), tk = e.c ? e.c.tk : vocab().segs[e.i], at = 0, st = -1, en = -1;
     for (var j = 0; j <= e.j && j < tk.length; j++) {
       var p = t.indexOf(tk[j].s, at);
       if (p < 0) break;
@@ -1247,12 +1349,24 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
       at = p + tk[j].s.length;
     }
     var h = st < 0 ? esc(t) : esc(t.slice(0, st)) + '<b class="hl">' + esc(t.slice(st, en)) + '</b>' + esc(t.slice(en));
-    return '<div class="item"><div class="sent" lang="ja">' + h + '</div><div class="small">' + esc(s.ru) + '</div></div>';
+    return '<div class="item"><div class="sent" lang="ja">' + h + '</div><div class="small">' + esc(s.ru) + (e.c ? ' · <b class="mine">моё</b>' : '') + '</div></div>';
   }
-  function examplesHtml(ex) {
-    if (!ex.length) return '';
-    var pick = shuffle(ex).slice(0, 2);
-    return '<div class="card" style="margin-top:12px"><div class="small" style="margin:0 0 8px">Из предложений приложения (всего ' + ex.length + '):</div>' + pick.map(exHtml).join('') + '</div>';
+  // примеры из своих фраз: match(слово) → подходит ли
+  function mineEx(match) {
+    var out = [];
+    custData().list.forEach(function (c) {
+      if (!c.first) return;
+      for (var j = 0; j < c.tk.length; j++) if (match(c.tk[j].s.replace(/[「」]/g, ''))) { out.push({ c: c, j: j }); break; }
+    });
+    return out;
+  }
+  function wordMatch(it) { return function (s) { return it.my ? s === it.w : it.re ? it.re.test(s) : s === it.w || it.alt.indexOf(s) >= 0; }; }
+  function examplesHtml(ex, mine) {
+    mine = mine || [];
+    if (!ex.length && !mine.length) return '';
+    var pick = shuffle(mine).slice(0, 1).concat(shuffle(ex)).slice(0, 2);
+    var head = mine.length ? 'Примеры (всего ' + (ex.length + mine.length) + ', из твоих фраз ' + mine.length + '):' : 'Из предложений приложения (всего ' + ex.length + '):';
+    return '<div class="card" style="margin-top:12px"><div class="small" style="margin:0 0 8px">' + head + '</div>' + pick.map(exHtml).join('') + '</div>';
   }
   function segHtml(act, curMode, list) {
     return segBox(act, list.map(function (x) { return { a: 'data-act="' + act + '" data-m="' + x[0] + '"', t: x[1], on: curMode === x[0] }; }));
@@ -1286,19 +1400,24 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
   function firstReading(r) { return String(r).split(' / ')[0]; }
 
   // ---------- Слова ----------
+  function myWordItems() {
+    return myKeys().map(function (w) { return { id: w, w: w, alt: [], r: mywords[w].r || w, ru: mywords[w].ru, k: 'my', ex: [], my: true }; });
+  }
+  function wordsAll() { return vocab().words.concat(myWordItems()); }
   function newWordQ() {
-    var V = vocab(), it = pickFrom(V.words, wstats, wq && wq.it.id);
-    var same = uniq(V.words.filter(function (x) { return x.k === it.k; }).map(function (x) { return x.ru; }));
-    var pool = same.length >= 4 ? same : V.words.map(function (x) { return x.ru; });
+    var W = wordsAll(), it = pickFrom(W, wstats, wq && wq.it.id);
+    var same = uniq(W.filter(function (x) { return x.k === it.k; }).map(function (x) { return x.ru; }));
+    var pool = same.length >= 4 ? same : W.map(function (x) { return x.ru; });
     wq = { it: it, opts: choicesOf(it.ru, pool), right: it.ru, done: false, showR: settings.reading, say: firstReading(it.r) };
   }
   function renderWords() {
-    var V = vocab(), h = noticeHtml() + topHtml('home');
+    var V = { words: wordsAll() }, h = noticeHtml() + topHtml('home'), pend = pendingWords();
+    if (pend.length) h += '<button class="t wide c3" data-tab="newwords" style="margin-bottom:10px"><span class="i" lang="ja">新</span><span class="tx"><b>Новые слова из твоих фраз</b><span class="ts">' + plural(pend.length, 'слово ждёт', 'слова ждут', 'слов ждут') + ' перевода</span></span><span class="rt2">›</span></button>';
     h += segHtml('wseg', wmode, [['quiz', 'Тренировка'], ['list', 'Список (' + V.words.length + ')']]);
     if (wmode === 'list') return h + wordListHtml(V);
     if (!wq) newWordQ();
     var it = wq.it, needR = it.r !== it.w, fx = fxOnce(wq);
-    h += '<section class="' + sheetCls(wq, fx) + '"><div class="kicker">' + esc(window.WORD_KINDS[it.k] || '') + ' · что это значит?</div><div class="big" lang="ja">' + esc(it.w) + '</div>';
+    h += '<section class="' + sheetCls(wq, fx) + '"><div class="kicker">' + esc(it.my ? 'Моё слово' : window.WORD_KINDS[it.k] || '') + ' · что это значит?</div><div class="big" lang="ja">' + esc(it.w) + '</div>';
     h += '<div class="sub">' + (needR && (wq.showR || wq.done) ? esc(it.r) : '') + '</div><div class="links lc">';
     if (needR && !wq.done) h += '<button class="link" data-act="wread">' + (wq.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
     h += '<button class="link" data-act="wsay">Послушать</button></div></section>';
@@ -1306,22 +1425,54 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     if (wq.done) {
       var body = '<div class="rule"><b lang="ja">' + esc(it.w) + '</b>' + (needR ? ' <span lang="ja">(' + esc(it.r) + ')</span>' : '') + ' — ' + esc(it.ru) + '</div>';
       if (it.alt.length) body += '<div class="small">Встречается и так: <span lang="ja">' + esc(it.alt.join(', ')) + '</span></div>';
-      h += verdictHtml(wq, body + examplesHtml(it.ex), 'wnext', fx);
+      h += verdictHtml(wq, body + examplesHtml(it.ex, mineEx(wordMatch(it))), 'wnext', fx);
     }
     return h;
   }
   function wordListHtml(V) {
-    var h = '<div class="small" style="margin:-4px 0 6px">Выучено ' + learned(wstats, V.words) + ' из ' + V.words.length + '. Слово считается выученным после 3 верных ответов подряд. Здесь только слова из предложений приложения.</div>';
-    Object.keys(window.WORD_KINDS || {}).forEach(function (k) {
+    var h = '<div class="small" style="margin:-4px 0 6px">Выучено ' + learned(wstats, V.words) + ' из ' + V.words.length + '. Слово считается выученным после 3 верных ответов подряд. Здесь слова из предложений приложения и из твоих фраз.</div>';
+    var KINDS = Object.assign({}, window.WORD_KINDS || {}, { my: 'Мои слова' });
+    Object.keys(KINDS).forEach(function (k) {
       var list = V.words.filter(function (x) { return x.k === k; });
       if (!list.length) return;
-      h += '<h3>' + esc(window.WORD_KINDS[k]) + '</h3><div class="card">' + list.map(function (x) {
+      h += '<h3>' + esc(KINDS[k]) + '</h3><div class="card">' + list.map(function (x) {
         var s = wstats[x.id];
         return '<div class="wrow"><span class="wj" lang="ja">' + esc(x.w) + '</span><span class="wr" lang="ja">' + esc(x.r) + '</span><span class="wt">' + esc(x.ru) + '</span>' + (s && s.c >= 3 ? '<span class="okm">✓</span>' : '') + '</div>';
       }).join('') + '</div>';
     });
     return h;
   }
+
+  // незнакомые куски из своих фраз, которым ещё не дали перевод
+  function pendingWords() {
+    var out = [], seen = {};
+    custData().list.forEach(function (c) {
+      if (!c.first) return;
+      var rd = null;
+      c.tk.forEach(function (t, k) {
+        if (!t.unk) return;
+        var w = t.s.replace(/[「」『』]/g, '');
+        if (!w || seen[w] || mywords[w]) return;
+        seen[w] = 1;
+        if (rd === null) rd = c.it.r ? tokenReadings(c.it, c.tk) : [];
+        out.push({ w: w, r: KANJI_RE.test(w) ? rd[k] || '' : w, c: c, j: k });
+      });
+    });
+    return out;
+  }
+  function renderNewWords() {
+    var list = pendingWords(), h = noticeHtml() + '<div class="top"><button class="bk" data-tab="words" aria-label="Назад">‹</button><h2>Новые слова</h2></div>';
+    if (!list.length) return h + '<div class="card small">Все слова из твоих фраз разобраны. Новые появятся здесь, когда добавишь фразу с незнакомым словом.</div>';
+    h += '<div class="small" style="margin:-4px 4px 10px">Слова из твоих фраз, которых нет в приложении. Дай перевод — слово попадёт в «Слова» и в «Собери предложение» станет отдельной плиткой. Если фраза разрезалась неправильно, нажми «Это не слово».</div>';
+    return h + list.map(function (x) {
+      var d = nwDraft[x.w] || {}, r = d.r != null ? d.r : x.r;
+      return '<div class="card"><div class="nwh"><span class="wj" lang="ja">' + esc(x.w) + '</span></div>' + exHtml({ c: x.c, j: x.j }) +
+        (KANJI_RE.test(x.w) ? '<input type="text" lang="ja" data-nw="' + esc(x.w) + '" data-f="r" value="' + esc(r) + '" placeholder="чтение хираганой (необязательно)">' : '') +
+        '<input type="text" data-nw="' + esc(x.w) + '" data-f="ru" value="' + esc(d.ru || '') + '" placeholder="перевод">' +
+        '<div class="links"><button class="link" data-act="nwsave" data-w="' + esc(x.w) + '">Сохранить</button><button class="link" data-act="nwskip" data-w="' + esc(x.w) + '" style="color:var(--mute)">Это не слово</button></div></div>';
+    }).join('');
+  }
+  function myWordsChanged() { myVer++; CUST = null; addCache = null; saveAll(); }
 
   // ---------- Глаголы ----------
   function newVerbQ() {
@@ -1349,7 +1500,7 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
       var v = q.it;
       h += '<section class="' + sheetCls(q, fx) + '"><div class="kicker">Что значит глагол?</div><div class="big" lang="ja">' + esc(v.d) + '</div>';
       h += '<div class="sub">' + (needR && (q.showR || q.done) ? esc(v.r) : '') + '</div>';
-      body = '<div class="rule"><b lang="ja">' + esc(v.d) + '</b>' + rdg + ' — ' + esc(v.ru) + '</div><div class="small">' + esc(groupText(v)) + '. В приложении встречается так:</div><div class="fx">' + v.f.map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div>' + examplesHtml(v.ex);
+      body = '<div class="rule"><b lang="ja">' + esc(v.d) + '</b>' + rdg + ' — ' + esc(v.ru) + '</div><div class="small">' + esc(groupText(v)) + '. В приложении встречается так:</div><div class="fx">' + v.f.map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div>' + examplesHtml(v.ex, mineEx(function (x) { return v.f.indexOf(x) >= 0 || (extraForms()[x] && extraForms()[x].v.d === v.d); }));
     }
     h += '<div class="links lc">';
     if (needR && !q.done) h += '<button class="link" data-act="vread">' + (q.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
@@ -1400,15 +1551,17 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
   }
   function newBuild() {
     var V = vocab(), base = window.BASE || [];
-    var list = base.map(function (s, i) { return { id: 'b' + i, i: i }; }).filter(function (x) { return V.segs[x.i].length > 1 && !V.segs[x.i].some(function (t) { return t.unk; }); });
-    var x = pickFrom(list, bstats, bq && bq.it.id), it = base[x.i], toks = V.segs[x.i], rd = tokenReadings(it, toks);
+    var list = base.map(function (s, i) { return { id: 'b' + i, item: s, toks: V.segs[i] }; }).filter(function (x) { return x.toks.length > 1 && !x.toks.some(function (t) { return t.unk; }); });
+    // свои фразы тоже: незнакомый кусок становится одной плиткой
+    custData().list.forEach(function (c) { if (c.first && c.tk.length > 1 && c.tk.length <= 12) list.push({ id: c.it.id, item: c.it, toks: c.tk }); });
+    var x = pickFrom(list, bstats, bq && bq.it.id), it = x.item, toks = x.toks, rd = tokenReadings(it, toks);
     var tiles = toks.map(function (t, k) { return { s: t.s, p: t.p, rd: rd[k] }; });
     var have = toks.map(function (t) { return t.s; });
     var spare = TOKEN_PARTS.filter(function (p) { return p !== 'か' && have.indexOf(p) < 0 && it.a.indexOf(p) < 0; });
     if (spare.length) tiles.push({ s: rnd(spare), p: true, rd: '', spare: true });
     var idx = tiles.map(function (t, k) { return k; }), order = shuffle(idx);
     for (var n = 0; n < 5 && order.slice(0, toks.length).join() === idx.slice(0, toks.length).join(); n++) order = shuffle(idx);
-    bq = { it: { id: x.id }, i: x.i, item: it, toks: toks, tiles: tiles, order: order, picked: [], done: false, showR: settings.reading, say: filled(x.i) };
+    bq = { it: { id: x.id }, item: it, toks: toks, tiles: tiles, order: order, picked: [], done: false, showR: settings.reading, say: it.t.replace('＿', it.a[0]) };
   }
   function tileHtml(t, act, k, showR, used, pop) {
     return '<button class="tl' + (used ? ' used' : '') + (pop ? ' pop' : '') + '" lang="ja" data-act="' + act + '" data-k="' + k + '"' + (used ? ' disabled' : '') + '>' +
@@ -1458,7 +1611,7 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
 
   function render() {
     var tabs = document.querySelectorAll('#tabs button');
-    var nav = /^(practice|words|verbs|build)$/.test(tab) ? 'home' : tab === 'add' ? (addq.from === 'home' ? 'home' : 'more') : tab;
+    var nav = /^(practice|words|verbs|build|newwords)$/.test(tab) ? 'home' : tab === 'add' ? (addq.from === 'home' ? 'home' : 'more') : tab;
     for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.tab === nav);
     // «пилюля» в меню переезжает к активной вкладке, значок подпрыгивает
     var idx = ['home', 'diary', 'progress', 'more'].indexOf(nav);
@@ -1472,7 +1625,7 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
       lastNav = idx;
     }
     var h = tab === 'practice' ? renderPractice() : tab === 'words' ? renderWords() : tab === 'verbs' ? renderVerbs() : tab === 'build' ? renderBuild() :
-      tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : tab === 'progress' ? renderProgress() : tab === 'home' ? renderHome() : renderMore();
+      tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : tab === 'newwords' ? renderNewWords() : tab === 'progress' ? renderProgress() : tab === 'home' ? renderHome() : renderMore();
     $app.innerHTML = h;
     afterRender();
     mountYuki();
@@ -1483,7 +1636,7 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     resetArmed = false;
     var from = tab, go = function () { tab = to; render(); };
     if (to === 'add' && from !== 'add') addq.from = from === 'home' ? 'home' : 'more';
-    if (SECTIONS.test(from) && to === 'home') backTo(go);
+    if ((SECTIONS.test(from) || from === 'newwords') && to === 'home') { if (from === 'newwords') openedKey = null; backTo(go); }
     else if (from === 'home' && SECTIONS.test(to) && el && el.dataset && el.dataset.key) openFrom(el, go);
     else switchTo(go);
   }
@@ -1494,6 +1647,13 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
   }
 
   // ---------- действия ----------
+  // следующая фраза из вставленного списка (или пустая форма)
+  function nextQueued() {
+    var q = addq.queue || [];
+    addq = freshAdd();
+    addCache = null;
+    if (q.length) { var nx = q.shift(); addq.text = nx.jp; addq.ru = nx.ru; addq.queue = q; }
+  }
   function addSentence() {
     var g = function (id) { return document.getElementById(id); }, msg = g('f-msg');
     addq.text = g('f-t').value || '';
@@ -1513,18 +1673,23 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     });
     saveAll();
     notice = (n ? 'Добавлено: ' + plural(n, 'вопрос', 'вопроса', 'вопросов') + '. Они уже в общей очереди.' : '') + (dup ? ' Уже было: ' + dup + '.' : '');
-    addq = { text: '', ru: '', blanks: [], alts: {}, rd: {}, from: addq.from };
+    nextQueued();
     render();
     window.scrollTo(0, 0);
   }
   function delCustom(id) {
     custom = custom.filter(function (it) { return it.id !== id; });
-    delete stats[id];
+    delete stats[id]; delete bstats[id];
+    // мои слова, которых больше нет ни в одной своей фразе, уходят вместе с ней
+    var texts = custom.map(function (c) { return c.t.replace('＿', c.a[0]); }).join('\n'), base = {};
+    vocab().words.forEach(function (x) { base[x.id] = 1; });
+    Object.keys(mywords).forEach(function (w) { if (texts.indexOf(w) < 0) { delete mywords[w]; if (!base[w]) delete wstats[w]; } });
+    myVer++; CUST = null;
     saveAll();
     if (cur && cur.item.id === id) { cur = null; next(); } else render();
   }
   function exportData() {
-    var data = JSON.stringify({ v: 1, stats: stats, custom: custom, days: days, settings: settings, words: wstats, verbs: vstats, build: bstats });
+    var data = JSON.stringify({ v: 1, stats: stats, custom: custom, days: days, settings: settings, words: wstats, verbs: vstats, build: bstats, mywords: mywords });
     var blob = new Blob([data], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1548,7 +1713,8 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     settings = Object.assign({ reading: false, speak: false, goal: 10, theme: 'auto' }, d.settings || {});
     // в старых копиях этих полей нет — тогда разделы начинаются с нуля
     var obj = function (x) { return x && typeof x === 'object' && !Array.isArray(x) ? x : {}; };
-    wstats = obj(d.words); vstats = obj(d.verbs); bstats = obj(d.build);
+    wstats = obj(d.words); vstats = obj(d.verbs); bstats = obj(d.build); mywords = obj(d.mywords);
+    myVer++; CUST = null;
     wq = vq = bq = null;
     saveAll();
     return null;
@@ -1572,6 +1738,19 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     else if (act === 'mode') { mode = el.dataset.m; cur = null; next(); }
     else if (act === 'train') switchTo(function () { mode = 'mistakes'; tab = 'practice'; cur = null; next(); });
     else if (act === 'add') addSentence();
+    else if (act === 'atr') autoTranslate();
+    else if (act === 'askip') { nextQueued(); render(); window.scrollTo(0, 0); }
+    else if (act === 'nwsave' || act === 'nwskip') {
+      var nw = el.dataset.w, dr = nwDraft[nw] || {}, pw = pendingWords().filter(function (x) { return x.w === nw; })[0];
+      if (act === 'nwsave') {
+        if (!(dr.ru || '').trim()) { notice = 'Для «' + nw + '» нужен перевод.'; render(); return; }
+        mywords[nw] = { r: (dr.r != null ? dr.r : pw ? pw.r : '').trim() || nw, ru: dr.ru.trim() };
+        notice = '«' + nw + '» теперь в «Словах».';
+      } else mywords[nw] = { skip: 1 };
+      delete nwDraft[nw];
+      myWordsChanged();
+      render();
+    }
     else if (act === 'ablank') {
       var bi = +el.dataset.i, at = addq.blanks.indexOf(bi), mm = addModel();
       if (at >= 0) { addq.blanks.splice(at, 1); delete addq.alts[bi]; }
@@ -1622,11 +1801,14 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
     var t = e.target;
     if (!t) return;
     if (t.id === 'f-t') {
+      // вставили вместе с переводом или несколько строк — раскладываем по полям
+      if ((/\n/.test(t.value) || CYR.test(t.value)) && applyPaste(t.value)) { render(); return; }
       addq.text = t.value;
       var m = addModel();
       addq.blanks = addq.blanks.filter(function (b) { return m.toks[b] && m.toks[b].p; });
       liveUpdate();
     } else if (t.id === 'f-ru') addq.ru = t.value;
+    else if (t.dataset && t.dataset.nw) { var dd = nwDraft[t.dataset.nw] || (nwDraft[t.dataset.nw] = {}); dd[t.dataset.f] = t.value; }
     else if (t.dataset && t.dataset.rd) {
       addq.rd[t.dataset.rd] = t.value.trim();
       var pv = document.getElementById('f-prev');
@@ -1648,6 +1830,17 @@ textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
   });
 
   try { if ('speechSynthesis' in window) speechSynthesis.getVoices(); } catch (e) {}
+  // Открыли через «Поделиться» (share_target в manifest.json): текст приходит в адресе — сразу на экран добавления.
+  try {
+    if (REAL && location.search) {
+      var sq = new URLSearchParams(location.search), shared = [sq.get('title'), sq.get('text')].filter(Boolean).join('\n');
+      if (shared) {
+        history.replaceState(null, '', location.pathname);
+        if (applyPaste(shared)) { tab = 'add'; addq.from = 'home'; }
+        else notice = 'В присланном тексте не нашлось японской фразы.';
+      }
+    }
+  } catch (e) {}
   next();
   enterFx();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});

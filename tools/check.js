@@ -190,6 +190,8 @@ console.log('diary has rows:', app.innerHTML.includes('class="item"'));
 // добавление своего предложения: ошибки
 handlers.click({ target: { closest: s => (s === '[data-tab]' ? { dataset: { tab: 'add' } } : null) } });
 const typeIn = (id, v) => { fields[id] = Object.assign(fields[id] || {}, { id, value: v }); handlers.input({ target: fields[id] }); };
+// после перерисовки поля в браузере показывают то, что в разметке: повторяем это для заглушки
+const syncForm = () => { const m = app.innerHTML.match(/<textarea id="f-t"[^>]*>([\s\S]*?)<\/textarea>/); if (m) (fields['f-t'] = fields['f-t'] || { id: 'f-t' }).value = m[1]; const r = app.innerHTML.match(/id="f-ru" value="(.*?)"/); if (r) (fields['f-ru'] = fields['f-ru'] || { id: 'f-ru' }).value = r[1]; };
 fields['f-msg'] = { textContent: '' };
 typeIn('f-t', ''); typeIn('f-ru', '');
 click('[data-act]', { act: 'add' });
@@ -205,14 +207,14 @@ click('[data-act]', { act: 'add' });
 let cu = JSON.parse(store.jp_custom);
 if (cu.length !== 1 || cu[0].t !== '私＿学生です。' || cu[0].r !== 'わたし＿がくせいです。' || cu[0].a.join() !== 'は') fail('custom not saved: ' + JSON.stringify(cu));
 // две частицы из одной фразы, に → подсказка へ, чтение из скобок
-typeIn('f-t', '猫（ねこ）と学校に行きます');
+typeIn('f-t', '象（ぞう）と学校に行きます');
 click('[data-act]', { act: 'ablank', i: '1' });
 click('[data-act]', { act: 'ablank', i: '3' });
-typeIn('f-ru', 'Иду в школу с кошкой.');
+typeIn('f-ru', 'Иду в школу со слоном.');
 click('[data-act]', { act: 'add' });
 cu = JSON.parse(store.jp_custom);
 console.log('quick add:', JSON.stringify(cu.slice(1)));
-if (cu.length !== 3 || cu[1].t !== '猫＿学校に行きます' || cu[2].t !== '猫と学校＿行きます' || cu[2].a.join() !== 'に,へ' || cu[2].r !== 'ねことがっこう＿いきます') fail('multi-blank add');
+if (cu.length !== 3 || cu[1].t !== '象＿学校に行きます' || cu[2].t !== '象と学校＿行きます' || cu[2].a.join() !== 'に,へ' || cu[2].r !== 'ぞうとがっこう＿いきます') fail('multi-blank add');
 // разделы «Слова», «Глаголы», «Собери предложение»
 const goTab = t => handlers.click({ target: { closest: s => (s === '[data-tab]' ? { dataset: { tab: t } } : null) } });
 goTab('home');
@@ -247,7 +249,7 @@ if (!Object.keys(vst).some(k => k.startsWith('m:')) || !Object.keys(vst).some(k 
   for (let n = 0; n < 30; n++) {
     const ru = (app.innerHTML.match(/class="task">(.*?)<\/div>/) || [])[1];
     const tiles = [...app.innerHTML.matchAll(/data-act="bpick" data-k="(\d+)">(?:<small>.*?<\/small>)?(.*?)<\/button>/g)].map(m => ({ k: m[1], s: m[2] }));
-    const cand = BASE.filter(s => s.ru.replace(/&quot;/g, '"') === (ru || '').replace(/&quot;/g, '"').replace(/&#39;/g, "'"));
+    const cand = BASE.concat(JSON.parse(store.jp_custom || '[]')).filter(s => s.ru.replace(/&quot;/g, '"') === (ru || '').replace(/&quot;/g, '"').replace(/&#39;/g, "'"));
     const s = cand.find(c => tokenize(c.t.replace('＿', c.a[0])).every(t => tiles.some(x => x.s === t.s)));
     if (!s) { fail('build: sentence not found for ' + ru); break; }
     const tk = tokenize(s.t.replace('＿', s.a[0]));
@@ -278,6 +280,57 @@ if (!Object.keys(vst).some(k => k.startsWith('m:')) || !Object.keys(vst).some(k 
 }
 const bst = JSON.parse(store.jp_build);
 if (!Object.keys(bst).length) fail('build stats not saved');
+// своё предложение: вставка вместе с переводом и список из нескольких фраз
+{
+  goTab('add');
+  typeIn('f-t', 'コーヒーを飲みます。 — Пью кофе.');
+  if (!app.innerHTML.includes('value="Пью кофе."') || !app.innerHTML.includes('コーヒーを飲みます。</textarea>')) fail('paste with translation not split');
+  typeIn('f-t', '水を飲みます。\nПью воду.\n新しいかばんを買いました。\nКупил новую сумку.');
+  if (!app.innerHTML.includes('В списке ещё 1 фраза')) fail('queue banner missing');
+  syncForm();
+  click('[data-act]', { act: 'ablank', i: '1' });
+  click('[data-act]', { act: 'add' });
+  let cu2 = JSON.parse(store.jp_custom);
+  if (!cu2.some(c => c.t === '水＿飲みます。' && c.ru === 'Пью воду.')) fail('queued phrase 1 not saved');
+  if (!app.innerHTML.includes('新しいかばんを買いました。</textarea>') || !app.innerHTML.includes('value="Купил новую сумку."')) fail('next queued phrase not loaded');
+  syncForm();
+  const tk = [...app.innerHTML.matchAll(/data-act="ablank" data-i="(\d+)">を</g)];
+  click('[data-act]', { act: 'ablank', i: tk[0][1] });
+  click('[data-act]', { act: 'add' });
+  cu2 = JSON.parse(store.jp_custom);
+  const bag = cu2.find(c => c.t === '新しいかばん＿買いました。');
+  if (!bag) fail('queued phrase 2 not saved');
+  console.log('paste + queue: saved', cu2.length, 'custom');
+  // новые слова из своих фраз
+  goTab('newwords');
+  const pend = [...app.innerHTML.matchAll(/data-act="nwsave" data-w="(.*?)"/g)].map(m => m[1]);
+  console.log('pending words:', pend.join(', '), '| custom:', JSON.parse(store.jp_custom).map(c => c.t).join(' '));
+  if (!pend.includes('象')) fail('unknown word not offered');
+  handlers.input({ target: { dataset: { nw: '象', f: 'ru' }, value: 'слон' } });
+  click('[data-act]', { act: 'nwsave', w: '象' });
+  const mw = JSON.parse(store.jp_mywords);
+  if (!mw['象'] || mw['象'].ru !== 'слон' || mw['象'].r !== 'ぞう') fail('my word not saved: ' + JSON.stringify(mw));
+  if (pend.length > 1) { click('[data-act]', { act: 'nwskip', w: pend.find(w => w !== '象') }); }
+  goTab('words');
+  click('[data-act]', { act: 'wseg', m: 'list' });
+  if (!app.innerHTML.includes('Мои слова') || (app.innerHTML.match(/class="wrow"/g) || []).length !== WORDS.length + 1) fail('my word not in list');
+  click('[data-act]', { act: 'wseg', m: 'quiz' });
+  // свои фразы попадают в «Собери предложение»
+  goTab('build');
+  let seenMine = false;
+  const mineRu = new Set(cu2.map(c => c.ru));
+  for (let n = 0; n < 300 && !seenMine; n++) {
+    const ru = (app.innerHTML.match(/class="task">(.*?)<\/div>/) || [])[1];
+    if (mineRu.has(ru)) seenMine = true;
+    click('[data-act]', { act: 'bnext' });
+  }
+  if (!seenMine) fail('custom phrases never offered in build');
+  // удаление фразы уносит и её слова
+  const cat = cu2.filter(c => c.t.includes('象'));
+  cat.forEach(c => click('[data-act]', { act: 'delc', id: c.id }));
+  if (JSON.parse(store.jp_mywords)['象']) fail('my word not removed with its phrase');
+  console.log('stage 2 ok:', seenMine);
+}
 // импорт
 const bak =JSON.stringify({ v: 1, stats: st, custom: cu, days: JSON.parse(store.jp_days), settings: { reading: true } });
 global.FileReader = class { readAsText() { this.result = bak; this.onload(); } };
