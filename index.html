@@ -41,6 +41,7 @@ h3{font-size:1rem;margin:16px 0 8px}
 .danger{background:var(--card2);color:var(--bad)}
 .filebtn{background:var(--card2);color:var(--text)}
 .link{background:none;border:0;color:var(--accent);padding:8px 0 0;font:inherit;font-size:.9rem}
+.links{display:flex;gap:18px;flex-wrap:wrap}
 .res.ok{border-color:var(--good)}
 .res.no{border-color:var(--bad)}
 .verdict{font-weight:700;font-size:1.15rem;margin-bottom:6px}
@@ -103,7 +104,7 @@ label{font-size:.85rem;color:var(--mute)}
   var stats = LS.get('jp_stats', {});
   var custom = LS.get('jp_custom', []);
   var days = LS.get('jp_days', {});
-  var settings = Object.assign({ reading: false }, LS.get('jp_settings', {}));
+  var settings = Object.assign({ reading: false, speak: false }, LS.get('jp_settings', {}));
   var tab = 'practice', mode = 'all', cur = null, notice = '', resetArmed = false;
   var $app = document.getElementById('app');
 
@@ -173,6 +174,30 @@ label{font-size:.85rem;color:var(--mute)}
     render();
   }
 
+  // ---------- озвучка ----------
+  function speak(text) {
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+      notice = 'В этом браузере нет озвучки.';
+      return;
+    }
+    try {
+      var voices = speechSynthesis.getVoices() || [];
+      var ja = voices.filter(function (v) { return /^ja/i.test(v.lang); })[0];
+      if (voices.length && !ja) notice = 'Не нашёл японский голос. Добавь его в настройках телефона: Язык → Синтез речи.';
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP';
+      u.rate = 0.85;
+      if (ja) u.voice = ja;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  function sayCurrent() {
+    if (!cur || !cur.done) return;
+    var it = cur.item, p = cur.ok ? cur.chosen : it.a[0];
+    speak(it.t.replace('＿', p));
+  }
+
   // ---------- ответ ----------
   function answer(p) {
     if (!cur || cur.done) return;
@@ -190,6 +215,7 @@ label{font-size:.85rem;color:var(--mute)}
     }
     saveAll();
     render();
+    if (settings.speak) { sayCurrent(); if (notice) render(); }
   }
 
   // ---------- экраны ----------
@@ -203,9 +229,10 @@ label{font-size:.85rem;color:var(--mute)}
     var fill = cur.done ? (cur.ok ? cur.chosen : it.a[0]) : null;
     h += '<div class="card"><div class="sent">' + sentHtml(it.t, fill) + '</div>';
     if (cur.showR && it.r) h += '<div class="read">' + sentHtml(it.r, fill) + '</div>';
-    h += '<div class="ru">' + esc(it.ru) + '</div>';
+    h += '<div class="ru">' + esc(it.ru) + '</div><div class="links">';
     if (it.r) h += '<button class="link" data-act="reading">' + (cur.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
-    h += '</div>';
+    if (cur.done) h += '<button class="link" data-act="speak">🔊 Послушать</button>';
+    h += '</div></div>';
     if (!cur.done) {
       h += '<div class="opts">' + PARTS.map(function (p) { return '<button data-act="ans" data-p="' + p + '">' + p + '</button>'; }).join('') + '</div>';
     } else {
@@ -261,6 +288,7 @@ label{font-size:.85rem;color:var(--mute)}
   function renderMore() {
     var h = noticeHtml() + '<h2>Ещё</h2>';
     h += '<div class="card"><div class="sw"><span>Всегда показывать чтение хираганой</span><button class="tog' + (settings.reading ? ' on' : '') + '" data-act="defread">' + (settings.reading ? 'Вкл' : 'Выкл') + '</button></div></div>';
+    h += '<div class="card"><div class="sw"><span>Озвучивать предложение после ответа</span><button class="tog' + (settings.speak ? ' on' : '') + '" data-act="defspeak">' + (settings.speak ? 'Вкл' : 'Выкл') + '</button></div></div>';
     h += '<div class="card"><h3>Резервная копия</h3><div class="small">Ошибки, свои предложения и серия хранятся только в этом браузере. Если очистить данные Chrome, всё пропадёт, поэтому иногда сохраняй копию.</div>';
     h += '<button class="primary" data-act="export">Сохранить копию (файл)</button>';
     h += '<label class="filebtn">Загрузить копию<input type="file" id="imp" accept="application/json,.json" hidden></label><div class="small">Загрузка заменит текущие данные.</div></div>';
@@ -320,7 +348,7 @@ label{font-size:.85rem;color:var(--mute)}
     stats = d.stats || {};
     custom = Array.isArray(d.custom) ? d.custom.filter(validCustom) : [];
     days = d.days && typeof d.days === 'object' ? d.days : {};
-    settings = Object.assign({ reading: false }, d.settings || {});
+    settings = Object.assign({ reading: false, speak: false }, d.settings || {});
     saveAll();
     return null;
   }
@@ -340,6 +368,8 @@ label{font-size:.85rem;color:var(--mute)}
     else if (act === 'delc') delCustom(el.dataset.id);
     else if (act === 'export') exportData();
     else if (act === 'defread') { settings.reading = !settings.reading; if (cur) cur.showR = settings.reading; saveAll(); render(); }
+    else if (act === 'speak') { sayCurrent(); if (notice) render(); }
+    else if (act === 'defspeak') { settings.speak = !settings.speak; saveAll(); render(); }
     else if (act === 'reset') {
       if (!resetArmed) { resetArmed = true; render(); }
       else { stats = {}; days = {}; resetArmed = false; saveAll(); notice = 'Прогресс и дневник ошибок сброшены.'; cur = null; next(); }
@@ -359,6 +389,7 @@ label{font-size:.85rem;color:var(--mute)}
     rd.readAsText(f);
   });
 
+  try { if ('speechSynthesis' in window) speechSynthesis.getVoices(); } catch (e) {}
   next();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 })();

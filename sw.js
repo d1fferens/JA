@@ -1,5 +1,5 @@
 // Офлайн-кэш: сначала отдаём из кэша, в фоне обновляем (новая версия появится при следующем открытии).
-const CACHE = 'jp-particles-v1';
+const CACHE = 'jp-particles-v2';
 const FILES = ['./', 'index.html', 'data.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
