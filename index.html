@@ -363,7 +363,7 @@ label{font-size:.85rem;color:var(--mute)}
     h += '</div></section>';
     if (!cur.done) {
       if (cur.hint) h += '<div class="note">' + esc(RULES[it.a[0]] || '') + '</div>';
-      h += '<div class="opts">' + PARTS.map(function (p) {
+      h += '<div class="opts">' + ['は','が','を','に','で','へ','と','も','の','や','か','から','まで'].map(function (p) {
         return '<button class="key' + (p.length > 1 || p === 'か' ? ' w2' : '') + '" lang="ja" data-act="ans" data-p="' + p + '">' + p + '</button>';
       }).join('') + '</div>';
     } else {
