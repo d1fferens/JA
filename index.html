@@ -247,6 +247,26 @@ button.hintc:active{transform:scale(.98)}
 .pb .tr i{display:block;height:100%;border-radius:6px;background:var(--acc);transition:width 1s cubic-bezier(.3,.9,.3,1) .3s}
 .pb .v{width:5.6rem;text-align:right;font-size:.82rem;color:var(--mute)}
 
+/* своё предложение */
+.hrow{display:flex;align-items:center;gap:10px}
+.hrow h1{margin-right:auto}
+.plus{flex:0 0 auto;width:44px;height:44px;margin:0 2px 14px 0;border-radius:14px;border:0;background:var(--acc);color:var(--onacc);font:800 24px/1 var(--ui);box-shadow:var(--shadow);cursor:pointer;transition:transform .1s}
+.plus:active{transform:scale(.92)}
+textarea[lang=ja]{font:600 1.15rem/1.5 var(--jp)}
+.ab{display:flex;flex-wrap:wrap;gap:4px 3px;align-items:center;font:700 1.3rem/1.4 var(--jp);margin:0 0 10px}
+.ab .aw.unk{border-bottom:2px dotted var(--acc2)}
+.apt{min-width:44px;height:44px;border-radius:12px;border:2px dashed var(--acc);background:var(--tint);color:var(--acc);font:800 1.2rem var(--jp);cursor:pointer;padding:0 6px;transition:transform .25s var(--spring),background .2s,color .2s}
+.apt:active{transform:scale(.9)}
+.apt.on{border-style:solid;background:var(--acc);color:var(--onacc)}
+.arow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:.92rem;margin:0 0 10px}
+.achip{min-width:44px;height:40px;border:0;border-radius:12px;padding:0 12px;background:var(--bg);font:800 1.05rem var(--jp);color:var(--mute);cursor:pointer}
+.achip.on{background:var(--good);color:var(--ongood)}
+.ard{margin:4px 0 6px}
+#f-live{margin-bottom:14px}
+.ardl{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:1rem}
+.ardl span{font:700 1.1rem var(--jp);min-width:3em}
+.ardl input{margin:4px 0}
+
 /* слой «раскрытия» плитки в раздел */
 .morph{position:fixed;z-index:4;pointer-events:none;transform-origin:0 0;will-change:transform}
 
@@ -893,7 +913,7 @@ button.hintc:active{transform:scale(.98)}
     var h = noticeHtml(), mc = masteredCount(), k = allItems().filter(isActive).length, V = vocab();
     var away = daysAway(), sleepy = away >= 2 && !napShown;
     var td = days[dayKey()] || { n: 0 }, goal = settings.goal || 10, done = td.n >= goal, st = streak();
-    h += '<h1>' + (sleepy ? 'Тсс… Юки спит' : 'Привет, это Юки') + '</h1><div class="bento">';
+    h += '<div class="hrow"><h1>' + (sleepy ? 'Тсс… Юки спит' : 'Привет, это Юки') + '</h1><button class="plus" data-tab="add" aria-label="Добавить свою фразу">＋</button></div><div class="bento">';
     // Юки и её реплика
     h += '<div class="t yk"><div class="say">' + esc(sleepy ? 'Юки задремала… Тебя не было ' + plural(away, 'день', 'дня', 'дней') + '.' : greet()) + '</div><span class="yk-slot" data-yuki="' + (sleepy ? 'home-sleep' : 'home') + '"></span></div>';
     // кольцо цели дня
@@ -972,18 +992,127 @@ button.hintc:active{transform:scale(.98)}
     return h;
   }
 
+  // ---------- своё предложение: вставил фразу → нажал на частицу → написал перевод ----------
+  // Фраза режется на слова тем же словарём, что и «Собери предложение». Чтение хираганой собирается само:
+  // для слов из приложения — из встроенных предложений, остальное — из скобок в тексте (図書館（としょかん）)
+  // или из коротких полей «как читается». Из одной фразы можно сделать несколько вопросов.
+  var addq = { text: '', ru: '', blanks: [], alts: {}, rd: {}, from: 'more' };
+  var READ = null;
+  function readDict() {
+    if (READ) return READ;
+    READ = {};
+    var V = vocab();
+    (window.BASE || []).forEach(function (it, i) {
+      if (!it.r) return;
+      var rd = tokenReadings(it, V.segs[i]);
+      V.segs[i].forEach(function (t, k) { if (rd[k] && !READ[t.s]) READ[t.s] = rd[k]; });
+    });
+    (window.WORDS || []).forEach(function (x) {
+      if (!x.re) [].concat(x.w).forEach(function (w) { if (!READ[w] && KANJI_RE.test(w)) READ[w] = firstReading(x.r); });
+    });
+    return READ;
+  }
+  var KANJI_RUN = /[一-鿿々]+/g;
+  var addCache = null;
+  function addModel() {
+    if (addCache && addCache.text === addq.text) return addCache;
+    var paren = {};
+    var s = String(addq.text)
+      .replace(/([一-鿿々]+)[ 　]*[（(［\[]([ぁ-ゖァ-ヺー]+)[）)］\]]/g, function (m, k, r) { paren[k] = r; return k; })
+      .replace(/[\s　_＿]+/g, '');
+    var toks = s ? tokenize(s) : [], pos = [], at = 0;
+    toks.forEach(function (t) { var i = s.indexOf(t.s, at); pos.push(i); at = i + t.s.length; });
+    addCache = { text: addq.text, s: s, toks: toks, pos: pos, paren: paren };
+    return addCache;
+  }
+  function tokReading(t, m) {
+    if (!KANJI_RE.test(t.s)) return t.s;
+    if (addq.rd[t.s]) return addq.rd[t.s];
+    var R = readDict();
+    if (R[t.s]) return R[t.s];
+    var ok = true;
+    var r = t.s.replace(KANJI_RUN, function (k) { var x = m.paren[k] || R[k]; if (!x) ok = false; return x || k; });
+    return ok && !/[0-9０-９]/.test(r) ? r : null;
+  }
+  // слова с иероглифами, у которых чтение неизвестно
+  function missingReadings(m) {
+    var out = [];
+    m.toks.forEach(function (t) { if (tokReading(t, m) === null && out.indexOf(t.s) < 0) out.push(t.s); });
+    return out;
+  }
+  // фраза с пропуском на месте частицы b (и такое же чтение, если оно известно полностью)
+  function addTexts(m, b) {
+    var t = b < 0 ? m.s : m.s.slice(0, m.pos[b]) + '＿' + m.s.slice(m.pos[b] + m.toks[b].s.length);
+    var r = '', at = 0, ok = true;
+    m.toks.forEach(function (tk, k) {
+      r += m.s.slice(at, m.pos[k]);
+      var x = k === b ? '＿' : tokReading(tk, m);
+      if (x === null) ok = false;
+      r += x || '';
+      at = m.pos[k] + tk.s.length;
+    });
+    r += m.s.slice(at);
+    return { t: t, r: ok ? r : '' };
+  }
+  // что ещё подходит: へ → всегда и に; に перед глаголом движения → и へ
+  function altSuggest(m, b) {
+    var p = m.toks[b].s, rest = m.toks.slice(b + 1).map(function (t) { return t.s; }).join('');
+    if (p === 'へ') return ['に'];
+    if (p === 'に' && /^(行|来|帰|戻|い[きっ]|き[まて]|かえ)/.test(rest)) return ['へ'];
+    return [];
+  }
+  function saveLabel() {
+    var n = addq.blanks.length;
+    return n > 1 ? 'Сохранить (' + plural(n, 'вопрос', 'вопроса', 'вопросов') + ')' : 'Сохранить';
+  }
+  function readPreview(m) {
+    if (!addq.blanks.length) return '';
+    var r = addTexts(m, -1).r;   // целиком, без пропусков
+    return r ? '<div class="small" id="f-prev">Чтение: <span lang="ja">' + esc(r) + '</span></div>'
+      : '<div class="small" id="f-prev">Без чтения фраза тоже сохранится, просто без фуриганы.</div>';
+  }
+  function addLiveHtml() {
+    var m = addModel();
+    if (!m.s) return '<div class="small">Вставь или набери фразу как есть, с частицами. Частицы подсветятся — нажми на ту, которую нужно угадывать. Можно на несколько.</div>';
+    var parts = m.toks.filter(function (t) { return t.p; }).length;
+    var h = '<div class="ab" lang="ja">' + m.toks.map(function (t, i) {
+      if (t.p) return '<button class="apt' + (addq.blanks.indexOf(i) >= 0 ? ' on' : '') + '" data-act="ablank" data-i="' + i + '">' + esc(t.s) + '</button>';
+      return '<span class="aw' + (t.unk ? ' unk' : '') + '">' + esc(t.s) + '</span>';
+    }).join('') + '</div>';
+    if (!parts) return h + '<div class="small">Не нашёл частиц. Проверь, что фраза на японском и частицы на месте.</div>';
+    if (!addq.blanks.length) h += '<div class="small">Нажми на частицу, которую нужно угадывать.</div>';
+    addq.blanks.forEach(function (b) {
+      var p = m.toks[b].s, sug = altSuggest(m, b), on = addq.alts[b] || [];
+      h += '<div class="arow"><span>Пропуск: <b lang="ja">' + esc(p) + '</b></span>';
+      if (sug.length) h += '<span>ещё подходит:</span>' + sug.map(function (x) {
+        return '<button class="achip' + (on.indexOf(x) >= 0 ? ' on' : '') + '" lang="ja" data-act="aalt" data-i="' + b + '" data-p="' + x + '">' + x + '</button>';
+      }).join('');
+      if (p === 'は' || p === 'が') h += '<span class="small" style="margin:0">は и が легко спутать — пусть перевод подсказывает нужную.</span>';
+      h += '</div>';
+    });
+    var miss = missingReadings(m);
+    if (miss.length) {
+      h += '<div class="ard"><div class="small" style="margin:0 0 4px">Как читается? Необязательно — без этого не будет только фуриганы.</div>' + miss.map(function (w) {
+        return '<label class="ardl"><span lang="ja">' + esc(w) + '</span><input type="text" lang="ja" data-rd="' + esc(w) + '" value="' + esc(addq.rd[w] || '') + '" placeholder="хираганой"></label>';
+      }).join('') + '</div>';
+    }
+    return h + readPreview(m);
+  }
+  function liveUpdate() {
+    var el = document.getElementById('f-live'), b = document.getElementById('f-save');
+    if (el) el.innerHTML = addLiveHtml();
+    if (b) b.textContent = saveLabel();
+  }
   function renderAdd() {
-    var opts = PARTS.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
-    var h = noticeHtml() + '<div class="top"><button class="bk" data-tab="more" aria-label="Назад">‹</button><h2>Своё предложение</h2></div><div class="card">';
-    h += '<label>Предложение (на месте частицы поставь ＿ или _)</label><textarea id="f-t" rows="2"></textarea>';
-    h += '<label>Чтение хираганой (необязательно, тоже с ＿)</label><textarea id="f-r" rows="2"></textarea>';
-    h += '<div class="row"><div><label>Правильная частица</label><select id="f-a1">' + opts + '</select></div><div><label>Или ещё подходит</label><select id="f-a2"><option value="">—</option>' + opts + '</select></div></div>';
-    h += '<label>Перевод или смысл (чтобы не было двусмысленности)</label><input type="text" id="f-ru">';
-    h += '<div class="small" id="f-msg"></div><button class="primary" data-act="add">Добавить</button></div>';
+    var h = noticeHtml() + '<div class="top"><button class="bk" data-tab="' + addq.from + '" aria-label="Назад">‹</button><h2>Своё предложение</h2></div><div class="card">';
+    h += '<label for="f-t">Фраза целиком — как в учебнике или субтитрах</label><textarea id="f-t" rows="2" lang="ja" placeholder="図書館で本を読みます。">' + esc(addq.text) + '</textarea>';
+    h += '<div id="f-live">' + addLiveHtml() + '</div>';
+    h += '<label for="f-ru">Перевод</label><input type="text" id="f-ru" value="' + esc(addq.ru) + '" placeholder="Читаю книгу в библиотеке.">';
+    h += '<div class="small" id="f-msg"></div><button class="primary" data-act="add" id="f-save">' + saveLabel() + '</button></div>';
     h += '<h3>Мои предложения (' + custom.length + ')</h3>';
-    if (!custom.length) h += '<div class="card small">Пока нет. Добавляй фразы из учебника, песен или аниме.</div>';
-    else h += '<div class="card">' + custom.map(function (it) {
-      return '<div class="item"><div class="sent sm">' + sentHtml(it.t, it.a[0]) + '</div><div class="small">' + esc(it.ru) + '</div><button class="link" data-act="delc" data-id="' + esc(it.id) + '">Удалить</button></div>';
+    if (!custom.length) h += '<div class="card small">Пока нет. Добавляй фразы из учебника, субтитров или песен.</div>';
+    else h += '<div class="card">' + custom.slice().reverse().map(function (it) {
+      return '<div class="item"><div class="sent sm">' + sentHtml(it.t, it.a[0]) + '</div><div class="small">' + esc(it.ru) + (it.a.length > 1 ? ' · подходит: ' + esc(it.a.join(', ')) : '') + '</div><button class="link" data-act="delc" data-id="' + esc(it.id) + '">Удалить</button></div>';
     }).join('') + '</div>';
     return h;
   }
@@ -1329,7 +1458,7 @@ button.hintc:active{transform:scale(.98)}
 
   function render() {
     var tabs = document.querySelectorAll('#tabs button');
-    var nav = /^(practice|words|verbs|build)$/.test(tab) ? 'home' : tab === 'add' ? 'more' : tab;
+    var nav = /^(practice|words|verbs|build)$/.test(tab) ? 'home' : tab === 'add' ? (addq.from === 'home' ? 'home' : 'more') : tab;
     for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.tab === nav);
     // «пилюля» в меню переезжает к активной вкладке, значок подпрыгивает
     var idx = ['home', 'diary', 'progress', 'more'].indexOf(nav);
@@ -1353,6 +1482,7 @@ button.hintc:active{transform:scale(.98)}
   function navTo(to, el) {
     resetArmed = false;
     var from = tab, go = function () { tab = to; render(); };
+    if (to === 'add' && from !== 'add') addq.from = from === 'home' ? 'home' : 'more';
     if (SECTIONS.test(from) && to === 'home') backTo(go);
     else if (from === 'home' && SECTIONS.test(to) && el && el.dataset && el.dataset.key) openFrom(el, go);
     else switchTo(go);
@@ -1365,19 +1495,27 @@ button.hintc:active{transform:scale(.98)}
 
   // ---------- действия ----------
   function addSentence() {
-    var g = function (id) { return document.getElementById(id); };
-    var msg = g('f-msg');
-    var norm = function (s) { return s.replace(/[_＿]+/g, '＿').trim(); };
-    var cnt = function (s) { return (s.match(/＿/g) || []).length; };
-    var t = norm(g('f-t').value), r = norm(g('f-r').value), ru = g('f-ru').value.trim();
-    var a = uniq([g('f-a1').value, g('f-a2').value].filter(Boolean));
-    if (cnt(t) !== 1) { msg.textContent = 'В предложении должно быть ровно одно пропущенное место ＿.'; return; }
-    if (r && cnt(r) !== 1) { msg.textContent = 'В чтении тоже нужен ровно один знак ＿.'; return; }
-    if (!ru) { msg.textContent = 'Напиши перевод или смысл: по нему видно, какая частица нужна.'; return; }
-    custom.push({ id: 'c' + Date.now(), t: t, r: r, a: a, ru: ru });
+    var g = function (id) { return document.getElementById(id); }, msg = g('f-msg');
+    addq.text = g('f-t').value || '';
+    addq.ru = (g('f-ru').value || '').trim();
+    var m = addModel();
+    addq.blanks = addq.blanks.filter(function (b) { return m.toks[b] && m.toks[b].p; });
+    if (!m.s) { msg.textContent = 'Вставь фразу.'; return; }
+    if (!m.toks.some(function (t) { return t.p; })) { msg.textContent = 'Не нашёл частиц — проверь фразу.'; return; }
+    if (!addq.blanks.length) { msg.textContent = 'Нажми на частицу, которую нужно угадывать.'; return; }
+    if (!addq.ru) { msg.textContent = 'Напиши перевод: по нему видно, какая частица нужна.'; return; }
+    var now = Date.now(), n = 0, dup = 0;
+    addq.blanks.slice().sort(function (a, b) { return a - b; }).forEach(function (b, k) {
+      var x = addTexts(m, b), a = uniq([m.toks[b].s].concat(addq.alts[b] || []));
+      if (custom.some(function (c) { return c.t === x.t; })) { dup++; return; }
+      custom.push({ id: 'c' + now + '-' + k, t: x.t, r: x.r, a: a, ru: addq.ru });
+      n++;
+    });
     saveAll();
-    notice = 'Добавлено, оно уже в общей очереди.';
+    notice = (n ? 'Добавлено: ' + plural(n, 'вопрос', 'вопроса', 'вопросов') + '. Они уже в общей очереди.' : '') + (dup ? ' Уже было: ' + dup + '.' : '');
+    addq = { text: '', ru: '', blanks: [], alts: {}, rd: {}, from: addq.from };
     render();
+    window.scrollTo(0, 0);
   }
   function delCustom(id) {
     custom = custom.filter(function (it) { return it.id !== id; });
@@ -1434,6 +1572,17 @@ button.hintc:active{transform:scale(.98)}
     else if (act === 'mode') { mode = el.dataset.m; cur = null; next(); }
     else if (act === 'train') switchTo(function () { mode = 'mistakes'; tab = 'practice'; cur = null; next(); });
     else if (act === 'add') addSentence();
+    else if (act === 'ablank') {
+      var bi = +el.dataset.i, at = addq.blanks.indexOf(bi), mm = addModel();
+      if (at >= 0) { addq.blanks.splice(at, 1); delete addq.alts[bi]; }
+      else { addq.blanks.push(bi); addq.alts[bi] = altSuggest(mm, bi); }
+      liveUpdate();
+    }
+    else if (act === 'aalt') {
+      var ai = +el.dataset.i, list = addq.alts[ai] || (addq.alts[ai] = []), ap = el.dataset.p, aj = list.indexOf(ap);
+      if (aj >= 0) list.splice(aj, 1); else list.push(ap);
+      liveUpdate();
+    }
     else if (act === 'delc') delCustom(el.dataset.id);
     else if (act === 'export') exportData();
     else if (act === 'import') { var inp = document.getElementById('imp'); if (inp) inp.click(); }
@@ -1466,6 +1615,22 @@ button.hintc:active{transform:scale(.98)}
     else if (act === 'reset') {
       if (!resetArmed) { resetArmed = true; render(); }
       else { stats = {}; days = {}; wstats = {}; vstats = {}; bstats = {}; wq = vq = bq = null; resetArmed = false; saveAll(); notice = 'Прогресс и дневник ошибок сброшены.'; cur = null; next(); }
+    }
+  });
+
+  document.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.id === 'f-t') {
+      addq.text = t.value;
+      var m = addModel();
+      addq.blanks = addq.blanks.filter(function (b) { return m.toks[b] && m.toks[b].p; });
+      liveUpdate();
+    } else if (t.id === 'f-ru') addq.ru = t.value;
+    else if (t.dataset && t.dataset.rd) {
+      addq.rd[t.dataset.rd] = t.value.trim();
+      var pv = document.getElementById('f-prev');
+      if (pv) pv.outerHTML = readPreview(addModel());
     }
   });
 

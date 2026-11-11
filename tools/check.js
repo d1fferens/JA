@@ -189,21 +189,30 @@ handlers.click({ target: { closest: s => (s === '[data-tab]' ? { dataset: { tab:
 console.log('diary has rows:', app.innerHTML.includes('class="item"'));
 // добавление своего предложения: ошибки
 handlers.click({ target: { closest: s => (s === '[data-tab]' ? { dataset: { tab: 'add' } } : null) } });
-fields['f-t'] = { value: 'テスト文です' };
-fields['f-r'] = { value: '' };
-fields['f-ru'] = { value: '' };
-fields['f-a1'] = { value: 'は' };
-fields['f-a2'] = { value: '' };
+const typeIn = (id, v) => { fields[id] = Object.assign(fields[id] || {}, { id, value: v }); handlers.input({ target: fields[id] }); };
 fields['f-msg'] = { textContent: '' };
+typeIn('f-t', ''); typeIn('f-ru', '');
 click('[data-act]', { act: 'add' });
-if (!fields['f-msg'].textContent.includes('ровно одно')) fail('blank validation');
-fields['f-t'].value = '私_学生です';
+if (!fields['f-msg'].textContent.includes('Вставь')) fail('empty phrase validation: ' + fields['f-msg'].textContent);
+typeIn('f-t', '私は学生です。');
+click('[data-act]', { act: 'add' });
+if (!fields['f-msg'].textContent.includes('Нажми на частицу')) fail('blank validation: ' + fields['f-msg'].textContent);
+click('[data-act]', { act: 'ablank', i: '1' });
 click('[data-act]', { act: 'add' });
 if (!fields['f-msg'].textContent.includes('перевод')) fail('ru validation: ' + fields['f-msg'].textContent);
-fields['f-ru'].value = 'Я студент.';
+typeIn('f-ru', 'Я студент.');
 click('[data-act]', { act: 'add' });
-const cu = JSON.parse(store.jp_custom);
-if (cu.length !== 1 || cu[0].t !== '私＿学生です') fail('custom not saved: ' + JSON.stringify(cu));
+let cu = JSON.parse(store.jp_custom);
+if (cu.length !== 1 || cu[0].t !== '私＿学生です。' || cu[0].r !== 'わたし＿がくせいです。' || cu[0].a.join() !== 'は') fail('custom not saved: ' + JSON.stringify(cu));
+// две частицы из одной фразы, に → подсказка へ, чтение из скобок
+typeIn('f-t', '猫（ねこ）と学校に行きます');
+click('[data-act]', { act: 'ablank', i: '1' });
+click('[data-act]', { act: 'ablank', i: '3' });
+typeIn('f-ru', 'Иду в школу с кошкой.');
+click('[data-act]', { act: 'add' });
+cu = JSON.parse(store.jp_custom);
+console.log('quick add:', JSON.stringify(cu.slice(1)));
+if (cu.length !== 3 || cu[1].t !== '猫＿学校に行きます' || cu[2].t !== '猫と学校＿行きます' || cu[2].a.join() !== 'に,へ' || cu[2].r !== 'ねことがっこう＿いきます') fail('multi-blank add');
 // разделы «Слова», «Глаголы», «Собери предложение»
 const goTab = t => handlers.click({ target: { closest: s => (s === '[data-tab]' ? { dataset: { tab: t } } : null) } });
 goTab('home');
