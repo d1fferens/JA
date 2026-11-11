@@ -94,6 +94,22 @@ label{font-size:.85rem;color:var(--mute)}
 #tabs b{font:normal 1.3rem/1.2 var(--jp)}
 #tabs button.on{color:var(--accent);border-top-color:var(--accent);font-weight:600}
 
+.tile{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;color:var(--ink);font:inherit}
+.tile .ic{font:600 1.9rem/1 var(--jp);width:44px;text-align:center;color:var(--accent)}
+.tile .tx{flex:1}.tile .tx b{display:block}.tile .tx span{font-size:.85rem;color:var(--mute)}
+.tile:disabled{opacity:.45}
+.tile:not(:disabled):active{border-color:var(--accent)}
+.back{background:none;border:0;color:var(--accent);font:inherit;font-size:.9rem;padding:0 0 8px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
+.cal i{display:block;aspect-ratio:1;border-radius:4px;border:1px solid var(--line);position:relative;overflow:hidden}
+.cal i u{position:absolute;inset:0;background:var(--accent)}
+.cal i.today{outline:2px solid var(--ink);outline-offset:1px}
+.cal.hd{margin-top:0;font-size:.75rem;color:var(--mute);text-align:center}
+.pb{display:flex;align-items:center;gap:10px;margin:8px 0}
+.pb .k{width:2.2rem;font:1.2rem var(--jp);text-align:center}
+.pb .t{flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.pb .t i{display:block;height:100%;background:var(--accent)}
+.pb .v{width:5.6rem;text-align:right;font-size:.82rem;color:var(--mute)}
 @keyframes stamp{0%{transform:scale(1.5) rotate(-8deg);opacity:0}100%{transform:none;opacity:1}}
 @keyframes fade{0%{opacity:0}100%{opacity:1}}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
@@ -102,9 +118,9 @@ label{font-size:.85rem;color:var(--mute)}
 <body>
 <main id="app"></main>
 <nav id="tabs">
-  <button data-tab="practice"><b lang="ja">練</b><span>Практика</span></button>
-  <button data-tab="diary"><b lang="ja">誤</b><span>Дневник</span></button>
-  <button data-tab="add"><b lang="ja">加</b><span>Добавить</span></button>
+  <button data-tab="home"><b lang="ja">学</b><span>Учить</span></button>
+  <button data-tab="diary"><b lang="ja">誤</b><span>Ошибки</span></button>
+  <button data-tab="progress"><b lang="ja">進</b><span>Прогресс</span></button>
   <button data-tab="more"><b lang="ja">他</b><span>Ещё</span></button>
 </nav>
 <script src="data.js"></script>
@@ -140,7 +156,7 @@ label{font-size:.85rem;color:var(--mute)}
   var custom = LS.get('jp_custom', []);
   var days = LS.get('jp_days', {});
   var settings = Object.assign({ reading: false, speak: false, goal: 10 }, LS.get('jp_settings', {}));
-  var tab = 'practice', mode = 'all', cur = null, notice = '', resetArmed = false;
+  var tab = 'home', mode = 'all', cur = null, notice = '', resetArmed = false;
   var $app = document.getElementById('app');
 
   function esc(s) {
@@ -344,13 +360,8 @@ label{font-size:.85rem;color:var(--mute)}
 
   // ---------- экраны ----------
   function renderPractice() {
-    var it = cur.item, k = allItems().filter(isActive).length, td = days[dayKey()] || { n: 0, ok: 0 };
-    var tn = 0, tok = 0;
-    for (var d in days) { tn += days[d].n; tok += days[d].ok; }
-    var goal = settings.goal || 0, pct = goal ? Math.min(100, Math.round(td.n / goal * 100)) : 0;
-    var h = noticeHtml();
-    h += '<div class="meter"><span>Сегодня <b>' + td.n + (goal ? '/' + goal : '') + '</b>' + (goal && td.n >= goal ? '<i class="seal" lang="ja">済</i>' : '') + '</span><span>Серия <b>' + streak() + ' дн.</b></span><span>Точность <b>' + (tn ? Math.round(tok / tn * 100) + '%' : '—') + '</b></span></div>';
-    h += '<div class="bar"><i style="width:' + pct + '%"></i></div>';
+    var it = cur.item, k = allItems().filter(isActive).length;
+    var h = noticeHtml() + '<button class="back" data-tab="home">‹ Разделы</button>' + meterHtml();
     h += '<div class="seg"><button data-act="mode" data-m="all"' + (mode === 'all' ? ' class="on"' : '') + '>Все предложения</button><button data-act="mode" data-m="mistakes"' + (mode === 'mistakes' ? ' class="on"' : '') + (k ? '' : ' disabled') + '>Мои ошибки (' + k + ')</button></div>';
     var fill = cur.done ? (cur.ok ? cur.chosen : it.a[0]) : null;
     var g = gridHtml(it, fill, !!(cur.showR && it.r), cur.done && !cur.ok ? cur.chosen : '');
@@ -384,6 +395,59 @@ label{font-size:.85rem;color:var(--mute)}
     var s = stats[it.id];
     return '<div class="item"><div class="sent sm">' + sentHtml(it.t, it.a[0]) + '</div><div class="small">' + esc(it.ru) + '</div><div class="small">Ошибок: <b>' + s.w + '</b> · твои ответы: ' + esc(uniq(s.bad || []).join(', ')) + '</div></div>';
   }
+  function meterHtml() {
+    var td = days[dayKey()] || { n: 0, ok: 0 }, tn = 0, tok = 0;
+    for (var d in days) { tn += days[d].n; tok += days[d].ok; }
+    var goal = settings.goal || 0, pct = goal ? Math.min(100, Math.round(td.n / goal * 100)) : 0;
+    return '<div class="meter"><span>Сегодня <b>' + td.n + (goal ? '/' + goal : '') + '</b>' + (goal && td.n >= goal ? '<i class="seal" lang="ja">済</i>' : '') + '</span><span>Серия <b>' + streak() + ' дн.</b></span><span>Точность <b>' + (tn ? Math.round(tok / tn * 100) + '%' : '—') + '</b></span></div><div class="bar"><i style="width:' + pct + '%"></i></div>';
+  }
+  function masteredCount() {
+    var all = allItems(), m = all.filter(function (it) { var s = stats[it.id]; return s && s.c >= 3; }).length;
+    return { m: m, n: all.length };
+  }
+  function renderHome() {
+    var h = noticeHtml() + meterHtml(), mc = masteredCount(), k = allItems().filter(isActive).length;
+    h += '<button class="tile" data-act="open" data-m="all"><span class="ic" lang="ja">は</span><span class="tx"><b>Частицы</b><span>Освоено ' + mc.m + ' из ' + mc.n + ' предложений</span></span></button>';
+    if (k) h += '<button class="tile" data-act="open" data-m="mistakes"><span class="ic" lang="ja">誤</span><span class="tx"><b>Мои ошибки</b><span>' + k + ' в работе — повтори, пока свежо</span></span></button>';
+    h += '<button class="tile" disabled><span class="ic" lang="ja">語</span><span class="tx"><b>Слова</b><span>Скоро</span></span></button>';
+    h += '<button class="tile" disabled><span class="ic" lang="ja">動</span><span class="tx"><b>Глаголы</b><span>Скоро</span></span></button>';
+    return h;
+  }
+  function renderProgress() {
+    var h = noticeHtml() + '<h2>Прогресс</h2>', mc = masteredCount();
+    var goal = settings.goal || 10, wd = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    var now = new Date(), dow = (now.getDay() + 6) % 7, start = new Date(now);
+    start.setDate(now.getDate() - dow - 28);
+    var cells = '', total = 0, act = 0;
+    for (var i = 0; i < 35; i++) {
+      var d = new Date(start); d.setDate(start.getDate() + i);
+      var key = dayKey(d), e = days[key], fut = d > now && key !== dayKey(now);
+      if (e) { total += e.n; act++; }
+      var a = e ? Math.min(1, 0.25 + 0.75 * e.n / goal) : 0;
+      cells += '<i' + (key === dayKey(now) ? ' class="today"' : '') + (fut ? ' style="opacity:.35"' : '') + ' title="' + key + '">' + (e ? '<u style="opacity:' + a.toFixed(2) + '"></u>' : '') + '</i>';
+    }
+    h += '<div class="card"><h3>Последние 5 недель</h3><div class="cal hd">' + wd.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div><div class="cal">' + cells + '</div>';
+    h += '<div class="small">Занимался ' + act + ' дн., ответов: ' + total + '. Чем темнее клетка, тем ближе к цели дня.</div></div>';
+    var by = {};
+    allItems().forEach(function (it) {
+      var p = it.a[0], s = stats[it.id], o = by[p] || (by[p] = { seen: 0, w: 0 });
+      if (s) { o.seen += s.seen || 0; o.w += s.w || 0; }
+    });
+    var ps = Object.keys(by).filter(function (p) { return by[p].seen > 0; });
+    h += '<div class="card"><h3>Освоено: ' + mc.m + ' из ' + mc.n + '</h3><div class="small">Предложение считается освоенным после 3 верных ответов подряд.</div></div>';
+    h += '<div class="card"><h3>Точность по частицам</h3>';
+    if (!ps.length) h += '<div class="small">Появится после первых ответов.</div>';
+    else {
+      ps.sort(function (a, b) { return (by[a].w / by[a].seen) - (by[b].w / by[b].seen) || by[b].seen - by[a].seen; });
+      ps.reverse();
+      h += ps.map(function (p) {
+        var o = by[p], pc = Math.max(0, Math.round((1 - Math.min(1, o.w / o.seen)) * 100));
+        return '<div class="pb"><span class="k" lang="ja">' + esc(p) + '</span><span class="t"><i style="width:' + pc + '%"></i></span><span class="v">' + pc + '% · ' + o.seen + '</span></div>';
+      }).join('');
+      h += '<div class="small">Сверху те, где ошибок меньше. Внизу то, что стоит подтянуть.</div>';
+    }
+    return h + '</div>';
+  }
   function renderDiary() {
     var h = noticeHtml() + '<h2>Дневник ошибок</h2>';
     var rows = allItems().filter(function (it) { return stats[it.id] && stats[it.id].w > 0; });
@@ -403,7 +467,7 @@ label{font-size:.85rem;color:var(--mute)}
 
   function renderAdd() {
     var opts = PARTS.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
-    var h = noticeHtml() + '<h2>Своё предложение</h2><div class="card">';
+    var h = noticeHtml() + '<button class="back" data-tab="more">‹ Ещё</button><h2>Своё предложение</h2><div class="card">';
     h += '<label>Предложение (на месте частицы поставь ＿ или _)</label><textarea id="f-t" rows="2"></textarea>';
     h += '<label>Чтение хираганой (необязательно, тоже с ＿)</label><textarea id="f-r" rows="2"></textarea>';
     h += '<div class="row"><div><label>Правильная частица</label><select id="f-a1">' + opts + '</select></div><div><label>Или ещё подходит</label><select id="f-a2"><option value="">—</option>' + opts + '</select></div></div>';
@@ -426,14 +490,16 @@ label{font-size:.85rem;color:var(--mute)}
     h += '<button class="primary" data-act="export">Сохранить копию (файл)</button>';
     h += '<button class="ghost" data-act="import">Загрузить копию</button><input type="file" id="imp" accept="application/json,.json" style="display:none"><div class="small">Загрузка заменит текущие данные.</div></div>';
     h += '<div class="card"><h3>Сброс</h3><button class="danger" data-act="reset" style="margin-top:0">' + (resetArmed ? 'Точно сбросить? Нажми ещё раз' : 'Сбросить прогресс и ошибки') + '</button><div class="small">Свои предложения останутся.</div></div>';
+    h += '<button class="tile" data-tab="add"><span class="ic" lang="ja">加</span><span class="tx"><b>Мои предложения</b><span>Добавить свою фразу (' + custom.length + ')</span></span></button>';
     h += '<div class="card small">Чтобы поставить на экран: меню Chrome ⋮ → «Установить приложение» или «Добавить на главный экран». После этого работает и без интернета.</div>';
     return h;
   }
 
   function render() {
     var tabs = document.querySelectorAll('#tabs button');
-    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.tab === tab);
-    var h = tab === 'practice' ? renderPractice() : tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : renderMore();
+    var nav = tab === 'practice' ? 'home' : tab === 'add' ? 'more' : tab;
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.tab === nav);
+    var h = tab === 'practice' ? renderPractice() : tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : tab === 'progress' ? renderProgress() : tab === 'home' ? renderHome() : renderMore();
     $app.innerHTML = h;
   }
 
@@ -493,6 +559,7 @@ label{font-size:.85rem;color:var(--mute)}
     if (!el) return;
     var act = el.dataset.act;
     if (act === 'ans') answer(el.dataset.p);
+    else if (act === 'open') { mode = el.dataset.m; tab = 'practice'; cur = null; next(); window.scrollTo(0, 0); }
     else if (act === 'next') { next(); window.scrollTo(0, 0); }
     else if (act === 'reading') { cur.showR = !cur.showR; render(); }
     else if (act === 'mode') { mode = el.dataset.m; cur = null; next(); }
