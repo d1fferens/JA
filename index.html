@@ -42,6 +42,9 @@ h3{font-size:1rem;margin:16px 0 8px}
 .filebtn{background:var(--card2);color:var(--text)}
 .link{background:none;border:0;color:var(--accent);padding:8px 0 0;font:inherit;font-size:.9rem}
 .links{display:flex;gap:18px;flex-wrap:wrap}
+.goalbox{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 14px 6px 8px}
+.sent.rb{line-height:2.3}
+ruby rt{font-size:.45em;color:var(--mute);letter-spacing:0;font-weight:400}
 .res.ok{border-color:var(--good)}
 .res.no{border-color:var(--bad)}
 .verdict{font-weight:700;font-size:1.15rem;margin-bottom:6px}
@@ -104,7 +107,7 @@ label{font-size:.85rem;color:var(--mute)}
   var stats = LS.get('jp_stats', {});
   var custom = LS.get('jp_custom', []);
   var days = LS.get('jp_days', {});
-  var settings = Object.assign({ reading: false, speak: false }, LS.get('jp_settings', {}));
+  var settings = Object.assign({ reading: false, speak: false, goal: 10 }, LS.get('jp_settings', {}));
   var tab = 'practice', mode = 'all', cur = null, notice = '', resetArmed = false;
   var $app = document.getElementById('app');
 
@@ -170,8 +173,59 @@ label{font-size:.85rem;color:var(--mute)}
   }
   function next() {
     var item = pick();
-    cur = { item: item, done: false, chosen: null, ok: null, showR: settings.reading, msg: '', extra: '' };
+    cur = { item: item, done: false, chosen: null, ok: null, showR: settings.reading, msg: '', extra: '', hint: false, goal: false };
     render();
+  }
+
+  // FURIGANA-BEGIN
+  var KANJI_RE = /[一-鿿々0-9０-９]/;
+  function splitTokens(t) {
+    var out = [], cur = '', k = null;
+    for (var i = 0; i < t.length; i++) {
+      var c = t.charAt(i), isK = KANJI_RE.test(c);
+      if (k === null || isK === k) cur += c;
+      else { out.push({ k: k, s: cur }); cur = c; }
+      k = isK;
+    }
+    if (cur) out.push({ k: k, s: cur });
+    return out;
+  }
+  function furigana(t, r) {
+    if (!t || !r) return null;
+    var tk = splitTokens(t);
+    // Перебор вариантов границ: чтение иероглифов не может быть короче числа иероглифов
+    function go(i, j) {
+      if (i === tk.length) return j === r.length ? [] : null;
+      var x = tk[i], rest;
+      if (!x.k) {
+        if (r.substr(j, x.s.length) !== x.s) return null;
+        rest = go(i + 1, j + x.s.length);
+        return rest ? [{ s: x.s }].concat(rest) : null;
+      }
+      var nxt = tk[i + 1];
+      if (!nxt) return r.length - j >= 1 ? [{ s: x.s, rd: r.slice(j) }] : null;
+      var minLen = Math.max(1, x.s.replace(/[0-9０-９]/g, '').length);
+      var maxLen = x.s.length * 6 + 3;
+      var pos = r.indexOf(nxt.s, j + minLen);
+      while (pos >= 0 && pos - j <= maxLen) {
+        rest = go(i + 1, pos);
+        if (rest) return [{ s: x.s, rd: r.slice(j, pos) }].concat(rest);
+        pos = r.indexOf(nxt.s, pos + 1);
+      }
+      return null;
+    }
+    return go(0, 0);
+  }
+  // FURIGANA-END
+  function sentRuby(it, fill) {
+    var parts = furigana(it.t, it.r);
+    if (!parts) return null;
+    var mid = fill ? '<b class="fill">' + esc(fill) + '</b>' : '<span class="blank"></span>';
+    return parts.map(function (p) {
+      if (p.rd) return '<ruby>' + esc(p.s) + '<rt>' + esc(p.rd) + '</rt></ruby>';
+      var i = p.s.indexOf('＿');
+      return i < 0 ? esc(p.s) : esc(p.s.slice(0, i)) + mid + esc(p.s.slice(i + 1));
+    }).join('');
   }
 
   // ---------- озвучка ----------
@@ -204,11 +258,14 @@ label{font-size:.85rem;color:var(--mute)}
     var it = cur.item, ok = it.a.indexOf(p) >= 0;
     var s = stats[it.id] || (stats[it.id] = { w: 0, c: 0, seen: 0, bad: [] });
     s.seen++;
-    if (ok) { s.c++; } else { s.w++; s.c = 0; s.bad = [p].concat(s.bad || []).slice(0, 6); }
+    if (ok) { if (!cur.hint) s.c++; } else { s.w++; s.c = 0; s.bad = [p].concat(s.bad || []).slice(0, 6); }
     var k = dayKey(), d = days[k] || (days[k] = { n: 0, ok: 0 });
     d.n++; if (ok) d.ok++;
+    if (settings.goal && d.n === settings.goal) cur.goal = true;
     cur.done = true; cur.chosen = p; cur.ok = ok; cur.msg = rnd(ok ? MSG_OK : MSG_BAD);
-    if (ok && s.w > 0) {
+    if (ok && cur.hint) {
+      cur.extra = 'Верно, но с подсказкой: в прогресс освоения не засчитываю.';
+    } else if (ok && s.w > 0) {
       cur.extra = s.c >= 3
         ? 'Это предложение было в дневнике ошибок. Три верных подряд — считаю освоенным.'
         : 'Из дневника ошибок. До «освоено» осталось верных ответов подряд: ' + (3 - s.c) + '.';
@@ -219,21 +276,28 @@ label{font-size:.85rem;color:var(--mute)}
   }
 
   // ---------- экраны ----------
+  function ring(n, goal) {
+    var p = goal ? Math.min(1, n / goal) : 0, C = 2 * Math.PI * 18;
+    return '<svg class="ring" viewBox="0 0 44 44" width="44" height="44"><circle cx="22" cy="22" r="18" fill="none" stroke="var(--line)" stroke-width="5"/><circle cx="22" cy="22" r="18" fill="none" stroke="' + (p >= 1 ? 'var(--good)' : 'var(--accent)') + '" stroke-width="5" stroke-linecap="round" stroke-dasharray="' + (C * p).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 22 22)"/></svg>';
+  }
   function renderPractice() {
     var it = cur.item, k = allItems().filter(isActive).length, td = days[dayKey()] || { n: 0, ok: 0 };
     var tn = 0, tok = 0;
     for (var d in days) { tn += days[d].n; tok += days[d].ok; }
     var h = noticeHtml();
-    h += '<div class="top"><div class="chip">Сегодня: <b>' + td.n + '</b></div><div class="chip">Серия: <b>' + streak() + '</b> дн.</div><div class="chip">Точность: <b>' + (tn ? Math.round(tok / tn * 100) + '%' : '—') + '</b></div></div>';
+    h += '<div class="top"><div class="goalbox">' + ring(td.n, settings.goal) + '<div><div class="small" style="margin:0">Цель дня</div><b>' + td.n + ' / ' + settings.goal + '</b></div></div><div class="chip">Серия: <b>' + streak() + '</b> дн.</div><div class="chip">Точность: <b>' + (tn ? Math.round(tok / tn * 100) + '%' : '—') + '</b></div></div>';
     h += '<div class="seg"><button data-act="mode" data-m="all"' + (mode === 'all' ? ' class="on"' : '') + '>Все предложения</button><button data-act="mode" data-m="mistakes"' + (mode === 'mistakes' ? ' class="on"' : '') + (k ? '' : ' disabled') + '>Мои ошибки (' + k + ')</button></div>';
     var fill = cur.done ? (cur.ok ? cur.chosen : it.a[0]) : null;
-    h += '<div class="card"><div class="sent">' + sentHtml(it.t, fill) + '</div>';
-    if (cur.showR && it.r) h += '<div class="read">' + sentHtml(it.r, fill) + '</div>';
+    var rub = cur.showR && it.r ? sentRuby(it, fill) : null;
+    h += '<div class="card"><div class="sent' + (rub ? ' rb' : '') + '">' + (rub || sentHtml(it.t, fill)) + '</div>';
+    if (cur.showR && it.r && !rub) h += '<div class="read">' + sentHtml(it.r, fill) + '</div>';
     h += '<div class="ru">' + esc(it.ru) + '</div><div class="links">';
-    if (it.r) h += '<button class="link" data-act="reading">' + (cur.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
+    if (it.r) h += '<button class="link" data-act="reading">' + (cur.showR ? 'Скрыть фуригану' : 'Показать фуригану') + '</button>';
     if (cur.done) h += '<button class="link" data-act="speak">🔊 Послушать</button>';
+    else if (!cur.hint) h += '<button class="link" data-act="hint">💡 Подсказка</button>';
     h += '</div></div>';
     if (!cur.done) {
+      if (cur.hint) h += '<div class="note">💡 ' + esc(RULES[it.a[0]] || '') + '</div>';
       h += '<div class="opts">' + PARTS.map(function (p) { return '<button data-act="ans" data-p="' + p + '">' + p + '</button>'; }).join('') + '</div>';
     } else {
       var rules = it.a.map(function (p) { return '<b>' + esc(p) + '</b> — ' + esc(RULES[p] || ''); }).join('<br>');
@@ -243,6 +307,7 @@ label{font-size:.85rem;color:var(--mute)}
       h += '<div class="rule">' + rules + '</div>';
       if (it.n) h += '<div class="small">' + esc(it.n) + '</div>';
       if (cur.extra) h += '<div class="small">' + esc(cur.extra) + '</div>';
+      if (cur.goal) h += '<div class="small">🎯 Цель на сегодня выполнена: ' + settings.goal + ' ответов. Можно остановиться или продолжить.</div>';
       h += '<button class="primary" data-act="next">Дальше</button></div>';
     }
     return h;
@@ -287,7 +352,8 @@ label{font-size:.85rem;color:var(--mute)}
 
   function renderMore() {
     var h = noticeHtml() + '<h2>Ещё</h2>';
-    h += '<div class="card"><div class="sw"><span>Всегда показывать чтение хираганой</span><button class="tog' + (settings.reading ? ' on' : '') + '" data-act="defread">' + (settings.reading ? 'Вкл' : 'Выкл') + '</button></div></div>';
+    h += '<div class="card"><div class="sw"><span>Всегда показывать фуригану</span><button class="tog' + (settings.reading ? ' on' : '') + '" data-act="defread">' + (settings.reading ? 'Вкл' : 'Выкл') + '</button></div></div>';
+    h += '<div class="card"><div style="margin-bottom:10px">Цель на день (ответов)</div><div class="seg" style="margin-bottom:0">' + [5, 10, 20, 30].map(function (n) { return '<button data-act="goal" data-n="' + n + '"' + (settings.goal === n ? ' class="on"' : '') + '>' + n + '</button>'; }).join('') + '</div></div>';
     h += '<div class="card"><div class="sw"><span>Озвучивать предложение после ответа</span><button class="tog' + (settings.speak ? ' on' : '') + '" data-act="defspeak">' + (settings.speak ? 'Вкл' : 'Выкл') + '</button></div></div>';
     h += '<div class="card"><h3>Резервная копия</h3><div class="small">Ошибки, свои предложения и серия хранятся только в этом браузере. Если очистить данные Chrome, всё пропадёт, поэтому иногда сохраняй копию.</div>';
     h += '<button class="primary" data-act="export">Сохранить копию (файл)</button>';
@@ -348,7 +414,7 @@ label{font-size:.85rem;color:var(--mute)}
     stats = d.stats || {};
     custom = Array.isArray(d.custom) ? d.custom.filter(validCustom) : [];
     days = d.days && typeof d.days === 'object' ? d.days : {};
-    settings = Object.assign({ reading: false, speak: false }, d.settings || {});
+    settings = Object.assign({ reading: false, speak: false, goal: 10 }, d.settings || {});
     saveAll();
     return null;
   }
@@ -368,6 +434,8 @@ label{font-size:.85rem;color:var(--mute)}
     else if (act === 'delc') delCustom(el.dataset.id);
     else if (act === 'export') exportData();
     else if (act === 'defread') { settings.reading = !settings.reading; if (cur) cur.showR = settings.reading; saveAll(); render(); }
+    else if (act === 'hint') { if (cur && !cur.done) { cur.hint = true; render(); } }
+    else if (act === 'goal') { settings.goal = +el.dataset.n; saveAll(); render(); }
     else if (act === 'speak') { sayCurrent(); if (notice) render(); }
     else if (act === 'defspeak') { settings.speak = !settings.speak; saveAll(); render(); }
     else if (act === 'reset') {
