@@ -142,7 +142,7 @@ const click = (sel, dataset) => handlers.click({ target: { closest: s => (s === 
 const change = ev => handlers.change(ev);
 const fail = m => { console.log('FAIL:', m); process.exitCode = 1; };
 
-if (!app.innerHTML.includes('class="tile"')) fail('home screen not rendered');
+if (!app.innerHTML.includes('class="bento"')) fail('home screen not rendered');
 click('[data-act]', { act: 'open', m: 'all' });
 if (!app.innerHTML.includes('class="grid"')) fail('practice screen not rendered');
 // ответить неправильно и правильно

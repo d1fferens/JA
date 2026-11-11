@@ -3,160 +3,270 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f1f4ee" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1317" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#EEF4FA">
+<script id="theme0">
+// тема ставится до отрисовки, чтобы не мигало: «Рамунэ» (светлая) или «Ночное бенто» (тёмная)
+(function () { try {
+  var t = (JSON.parse(localStorage.getItem('jp_settings') || '{}') || {}).theme || 'auto';
+  var d = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+} catch (e) {} })();
+</script>
 <link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=M+PLUS+1p:wght@500;700;800&display=swap">
 <link rel="stylesheet" href="yuki.css">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Частицы</title>
 <style>
+/* ===== Палитры: «Рамунэ» (светлая) и «Ночное бенто» (тёмная). Цвета только через эти переменные. ===== */
 :root{
-  --jp:"Noto Serif JP","Noto Serif CJK JP","Hiragino Mincho ProN","Yu Mincho","Source Han Serif JP",serif;
-  --bg:#f1f4ee;--sheet:#fbfcf8;--grid:#b4cdc1;--line:#d3dcd1;--ink:#1c2733;--mute:#66737f;
-  --accent:#2c4aa0;--on-accent:#ffffff;--tint:rgba(44,74,160,.09);--good:#237a57;--pen:#c8382f;--cell:38px
+  --jp:"M PLUS 1p","Hiragino Kaku Gothic ProN","Noto Sans JP","Noto Sans CJK JP","Yu Gothic",sans-serif;
+  --ui:"Inter",system-ui,-apple-system,"Noto Sans",Roboto,sans-serif;
+  --bg:#EEF4FA;--card:#FFFFFF;--ink:#1F2A3A;--mute:#627086;--line:#E1E8F0;--grid:#BCD0E6;--soft:rgba(31,42,58,.08);--off:rgba(98,112,134,.35);
+  --yk:#D3EAFA;--t1:#FFF0BF;--t2:#E3E0FB;--t3:#D8F3E9;--t4:#FCE3E4;
+  --acc:#2B74EE;--acc2:#F5B820;--onacc:#FFFFFF;--tint:rgba(43,116,238,.10);
+  --good:#1FA971;--ongood:#FFFFFF;--bad:#E5484D;--onbad:#FFFFFF;
+  --nav:#1F2A3A;--navon:#FFFFFF;--navoff:#8A95A8;--pill:rgba(255,255,255,.14);--chip:#1F2A3A;--chipink:#FFFFFF;
+  --shadow:0 1px 2px rgba(31,42,58,.05),0 6px 18px rgba(31,42,58,.06);
+  --cell:38px;--spring:cubic-bezier(.3,1.6,.5,1);
+  color-scheme:light
 }
-@media (prefers-color-scheme: dark){:root{--bg:#0f1317;--sheet:#161c21;--grid:#2f4047;--line:#242d34;--ink:#e8eee8;--mute:#8794a0;--accent:#8da6ff;--on-accent:#0e1430;--tint:rgba(141,166,255,.12);--good:#6fcf9f;--pen:#ff7c70}}
+:root[data-theme=dark]{
+  --bg:#141519;--card:#22242B;--ink:#EDEDF2;--mute:#9496A3;--line:#30323A;--grid:#3B4650;--soft:rgba(237,237,242,.08);--off:rgba(148,150,163,.35);
+  --yk:#1D3A37;--t1:#2E2744;--t2:#3A2830;--t3:#1F3040;--t4:#3A2226;
+  --acc:#3ED3C3;--acc2:#B49BFF;--onacc:#0E1514;--tint:rgba(62,211,195,.12);
+  --good:#3ED3A0;--ongood:#0E1514;--bad:#FF6B6B;--onbad:#1A0E0E;
+  --nav:#22242B;--navon:#3ED3C3;--navoff:#7D7F8C;--pill:rgba(62,211,195,.14);--chip:#EDEDF2;--chipink:#141519;
+  --shadow:none;
+  color-scheme:dark
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Noto Sans",Roboto,sans-serif}
-#app{max-width:560px;margin:0 auto;padding:14px 16px calc(88px + env(safe-area-inset-bottom))}
-h2{font-size:1.15rem;font-weight:600;margin:6px 0 14px}
-h3{font-size:1rem;font-weight:600;margin:18px 0 8px}
-.card h3{margin-top:0}
-b{font-weight:600}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--ui);transition:background-color .35s,color .35s}
+html.theming *{transition:background-color .35s,color .35s,border-color .35s,box-shadow .35s!important}
+button{font:inherit;color:inherit}
+#app{max-width:560px;margin:0 auto;padding:16px 14px calc(110px + env(safe-area-inset-bottom))}
+h1{font:800 26px/1.2 var(--ui);margin:4px 4px 14px;letter-spacing:-.01em}
+h2{font:800 20px/1.25 var(--ui);margin:4px 4px 12px}
+h3{font:700 14px var(--ui);margin:18px 4px 8px;color:var(--mute)}
+.card h3{margin:0 0 6px;color:var(--ink);font-size:16px}
+b{font-weight:700}
 [lang=ja]{font-family:var(--jp)}
+.seal{display:inline-block;font:800 .72rem/1 var(--jp);color:#fff;background:var(--bad);padding:3px 4px;border-radius:4px;transform:rotate(-6deg);margin-left:6px;vertical-align:1px}
+.small{font-size:.88rem;color:var(--mute);margin-top:4px}
+.note{background:var(--tint);border-radius:14px;padding:10px 12px;margin:0 0 10px;font-size:.92rem}
+.card{background:var(--card);border-radius:22px;padding:16px;margin-bottom:10px;box-shadow:var(--shadow)}
 
-.meter{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;color:var(--mute)}
-.meter b{color:var(--ink)}
-.bar{height:3px;background:var(--line);margin:8px 0 14px;border-radius:2px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--accent)}
-.seal{display:inline-block;font:normal 600 .72rem/1 var(--jp);color:#fff;background:var(--pen);padding:3px 4px;border-radius:2px;transform:rotate(-6deg);margin-left:6px;vertical-align:1px}
+/* ===== Бенто на главном ===== */
+.bento{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.t{display:block;width:100%;text-align:left;border:0;background:var(--card);color:var(--ink);border-radius:22px;padding:14px;position:relative;overflow:hidden;box-shadow:var(--shadow);min-width:0;font:inherit;transition:transform .35s var(--spring)}
+button.t{cursor:pointer}
+button.t:active{transform:scale(.965);transition:transform .1s}
+.t.c1{background:var(--t1)}.t.c2{background:var(--t2)}.t.c3{background:var(--t3)}.t.c4{background:var(--t4)}
+.t.wide{grid-column:span 2;display:flex;align-items:center;gap:12px}
+.t .i{width:44px;height:44px;border-radius:14px;background:var(--chip);color:var(--chipink);font:800 22px/1 var(--jp);display:grid;place-items:center;flex:0 0 auto}
+.t b{display:block;font-size:15px;margin-top:8px}.t.wide b{margin-top:0}
+.t .ts{display:block;font-size:12px;color:var(--mute)}
+.t .tx{flex:1;min-width:0}
+.t .rt2{margin-left:auto;font-size:13px;font-weight:700;white-space:nowrap}
+.lab{font-size:12px;color:var(--mute)}
+.num{font:800 28px/1.15 var(--ui);font-variant-numeric:tabular-nums}
+.t.yk{grid-row:span 2;background:var(--yk);padding:12px 8px 0;display:flex;flex-direction:column}
+.t.yk .say{font-size:13px;font-weight:600;padding:0 4px;min-height:36px;transition:opacity .18s}
+.t.yk .yuki{width:132px;margin:auto auto 0}
+.tbar{display:block;height:6px;border-radius:6px;background:var(--soft);margin-top:8px;overflow:hidden}
+.tbar i{display:block;height:100%;border-radius:6px;background:var(--acc);transition:width 1s cubic-bezier(.3,.9,.3,1) .35s}
+/* кольцо цели дня */
+.ring{position:relative;width:92px;height:92px;margin:0 auto 4px}
+.ring svg{display:block;width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:10;stroke-linecap:round}
+.ring .bgc{stroke:var(--soft)}
+.ring .fg{stroke:var(--acc);stroke-dasharray:226.2;transition:stroke-dashoffset 1.1s cubic-bezier(.3,.9,.3,1),stroke .35s}
+.ring .val{position:absolute;inset:0;display:grid;place-items:center;font:800 19px var(--ui);font-variant-numeric:tabular-nums}
+.ring.done .fg{stroke:var(--good)}
+.ring.burst:after{content:"";position:absolute;inset:-4px;border-radius:50%;border:3px solid var(--good);animation:burst .8s ease-out forwards}
+/* серия: две недели клеточками */
+.mcal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:6px}
+.mcal i{aspect-ratio:1;border-radius:4px;background:var(--soft)}
+.mcal i.f{background:var(--acc)}.mcal i.today{background:var(--acc2)}
+.in .mcal i.f,.in .mcal i.today{animation:cellIn .35s var(--spring) backwards;animation-delay:calc(420ms + var(--c,0) * 45ms)}
+.mcal i.stamp{animation:stampCal .5s var(--spring) both}
 
-.seg{display:flex;border-bottom:1px solid var(--line);margin-bottom:14px}
-.seg button{flex:1;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--mute);padding:10px 4px;font:inherit;font-size:.92rem}
-.seg button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+/* вход экрана: карточки появляются лесенкой */
+.in .st{animation:tileIn .55s cubic-bezier(.2,.9,.3,1.18) backwards;animation-delay:calc(var(--i,0) * 55ms)}
+
+/* ===== нижнее меню: «пилюля» переезжает к активной вкладке ===== */
+#tabs{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));width:min(532px,calc(100% - 28px));display:flex;background:var(--nav);border-radius:24px;padding:6px;z-index:5;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+#tabs .pill{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px) / 4);border-radius:18px;background:var(--pill);transition:transform .45s cubic-bezier(.3,1.35,.5,1)}
+#tabs button{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;border:0;background:none;color:var(--navoff);font:600 11px var(--ui);padding:6px 2px 5px;transition:color .25s;cursor:pointer}
+#tabs b{display:block;font:500 19px/1.25 var(--jp)}
+#tabs button.on{color:var(--navon)}
+
+/* ===== верх раздела: назад + полоска цели дня ===== */
+.top{display:flex;align-items:center;gap:10px;margin:0 2px 12px}
+.top h2{margin:0}
+.bk{flex:0 0 auto;width:44px;height:44px;border-radius:14px;border:0;background:var(--card);box-shadow:var(--shadow);font:800 22px/1 var(--ui);color:var(--ink);cursor:pointer;transition:transform .1s}
+.bk:active{transform:scale(.92)}
+.sess{flex:1;height:8px;border-radius:8px;background:var(--soft);overflow:hidden}
+.sess i{display:block;height:100%;background:var(--acc);border-radius:8px;transition:width .6s cubic-bezier(.3,1.3,.5,1)}
+.sess.done i{background:var(--good)}
+.sn{font:700 13px var(--ui);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* переключатель с «бегунком» */
+.seg{display:flex;position:relative;background:var(--card);border-radius:14px;padding:3px;margin:0 0 12px;box-shadow:var(--shadow)}
+.card .seg{background:var(--bg);box-shadow:none;margin:10px 0 0}
+.seg .knob{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px) / var(--n));border-radius:11px;background:var(--acc);transform:translateX(calc(var(--k) * 100%));transition:transform .4s cubic-bezier(.3,1.35,.5,1)}
+.seg button{flex:1;position:relative;z-index:1;min-height:40px;border:0;background:none;border-radius:11px;font:700 14px var(--ui);color:var(--mute);transition:color .25s;cursor:pointer;padding:0 4px}
+.seg button.on{color:var(--onacc)}
 .seg button:disabled{opacity:.4}
+.sw{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.tog{flex:0 0 auto;width:52px;height:32px;border-radius:16px;border:0;background:var(--off);position:relative;cursor:pointer;transition:background .25s}
+.tog:after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .35s var(--spring)}
+.tog.on{background:var(--acc)}.tog.on:after{transform:translateX(20px)}
 
-.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:16px 14px 12px;margin-bottom:14px}
-.grid{display:flex;flex-wrap:wrap;align-items:flex-end;row-gap:6px;padding:1px}
-.u{display:flex;flex-direction:column;align-items:flex-start;flex:0 0 auto;max-width:100%}
-.cs{display:flex;flex-wrap:wrap;justify-content:flex-start}
-.c{position:relative;display:grid;place-items:center;width:var(--cell);height:var(--cell);border:1px solid var(--grid);margin:0 -1px -1px 0;font-size:calc(var(--cell)*.62);line-height:1;color:var(--ink)}
-.c.blank{border-color:var(--accent);background:var(--tint);z-index:1}
-.c.fill{border-color:var(--good);color:var(--good);font-weight:700;z-index:1;animation:stamp .22s ease-out}
-.c.wide{width:auto;min-width:var(--cell);padding:0 5px;font-size:calc(var(--cell)*.5)}
-.rt{display:flex;justify-content:center;font-size:11px;line-height:1.15;color:var(--mute);padding-bottom:2px;white-space:nowrap}
-.rt .pen{color:var(--pen);font-size:14px;text-decoration:line-through;text-decoration-thickness:2px;animation:fade .25s ease-out}
-.read{font-family:var(--jp);font-size:1rem;color:var(--mute);margin-top:10px}
-.ru{margin-top:14px;color:var(--mute)}
+/* кнопки и поля */
+.primary,.ghost,.danger{display:block;width:100%;min-height:52px;border-radius:16px;border:0;font:800 16px var(--ui);margin-top:12px;cursor:pointer;transition:transform .1s}
+.primary{background:var(--acc);color:var(--onacc)}
+.primary:not(:disabled):active,.ghost:active,.danger:active{transform:scale(.98)}
+.primary:disabled{opacity:.4;cursor:default}
+.ghost{background:var(--bg);color:var(--ink);margin-top:10px}
+.danger{background:var(--t4);color:var(--bad)}
+.link{background:none;border:0;color:var(--acc);padding:8px 0 0;font:700 .9rem var(--ui);cursor:pointer}
 .links{display:flex;gap:20px;flex-wrap:wrap;margin-top:6px}
-.link{background:none;border:0;color:var(--accent);padding:8px 0 0;font:inherit;font-size:.9rem}
-
-.note{border-left:3px solid var(--accent);background:var(--tint);padding:10px 12px;margin:0 0 12px;font-size:.92rem;border-radius:0 8px 8px 0}
-.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.key{height:56px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);font-family:var(--jp);font-size:1.45rem}
-.key.w2{grid-column:span 2}
-.key:active{background:var(--tint);border-color:var(--accent)}
-
-.res{border-left:3px solid var(--good);padding:2px 0 2px 14px;margin:4px 0 0}
-.res.no{border-left-color:var(--pen)}
-.verdict{font-weight:600;font-size:1.1rem;margin-bottom:6px}
-.res.ok .verdict{color:var(--good)}
-.res.no .verdict{color:var(--pen)}
-.rule{margin:10px 0 6px}
-.goalmsg{margin-top:10px;font-size:.9rem;color:var(--mute)}
-.small{font-size:.9rem;color:var(--mute);margin-top:4px}
-
-.primary,.ghost,.danger{display:block;width:100%;height:50px;border-radius:8px;font:inherit;font-weight:600;font-size:1rem;margin-top:14px}
-.primary{border:0;background:var(--accent);color:var(--on-accent)}
-.primary:disabled{opacity:.4}
-.ghost{border:1px solid var(--line);background:none;color:var(--ink);margin-top:10px}
-.danger{border:1px solid var(--line);background:none;color:var(--pen)}
-
-.card{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:12px}
+textarea,input[type=text],select{width:100%;background:var(--bg);color:var(--ink);border:2px solid transparent;border-radius:14px;padding:11px 12px;font:inherit;margin:4px 0 12px;outline:0;transition:border-color .2s}
+textarea:focus,input[type=text]:focus,select:focus{border-color:var(--acc)}
+label{font-size:.85rem;color:var(--mute)}
+.row{display:flex;gap:10px}.row>div{flex:1}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
-.chip{border:1px solid var(--line);border-radius:6px;padding:3px 10px;font-size:.88rem;color:var(--mute)}
-.chip b{color:var(--ink);font-family:var(--jp)}
-.sent{font-family:var(--jp);font-size:1.15rem;line-height:1.6}
-.sent .fill{color:var(--good);font-weight:700;border-bottom:2px solid var(--good);padding:0 1px}
+.chip{border-radius:12px;padding:6px 10px;background:var(--bg);font-size:13px;color:var(--mute)}
+.chip b{color:var(--ink);font:800 17px var(--jp);margin-right:2px}
 .item{border-top:1px solid var(--line);padding:12px 0}
 .item:first-child{border-top:0;padding-top:0}
 .item:last-child{padding-bottom:0}
-.sw{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.tog{border:1px solid var(--line);background:none;color:var(--mute);border-radius:6px;padding:6px 14px;font:inherit}
-.tog.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-textarea,input[type=text],select{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;margin:4px 0 12px}
-label{font-size:.85rem;color:var(--mute)}
-.row{display:flex;gap:10px}
-.row>div{flex:1}
+.sent{font:700 1.2rem/1.6 var(--jp)}
+.sent .fill{color:var(--good);font-weight:800}
 
-#tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--sheet);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
-#tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;border:0;border-top:2px solid transparent;margin-top:-1px;background:none;color:var(--mute);font:inherit;font-size:.78rem;padding:7px 4px 9px}
-#tabs b{font:normal 1.3rem/1.2 var(--jp)}
-#tabs button.on{color:var(--accent);border-top-color:var(--accent);font-weight:600}
+/* ===== лист с предложением (рукописная сетка) ===== */
+.sheet{background:var(--card);border-radius:24px;padding:20px 16px 14px;margin-bottom:10px;box-shadow:var(--shadow);transition:box-shadow .4s}
+.sheet.okg{box-shadow:0 0 0 3px color-mix(in srgb,var(--good) 55%,transparent)}
+.sheet.badg{box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 55%,transparent)}
+.grid{display:flex;flex-wrap:wrap;align-items:flex-end;row-gap:6px;padding:2px}
+.u{display:flex;flex-direction:column;align-items:flex-start;flex:0 0 auto;max-width:100%}
+.cs{display:flex;flex-wrap:wrap;justify-content:flex-start}
+.c{position:relative;display:grid;place-items:center;width:var(--cell);height:var(--cell);border:1px solid var(--grid);margin:0 -1px -1px 0;font-size:calc(var(--cell)*.6);font-weight:500;line-height:1;color:var(--ink)}
+.c.blank{border:2px dashed var(--acc);background:var(--tint);z-index:1;border-radius:7px;animation:breathe 2.2s ease-in-out infinite}
+.c.fill{border:2px solid var(--good);color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent);font-weight:800;z-index:1;border-radius:7px}
+.c.fill.pop{animation:stampIn .45s cubic-bezier(.3,1.7,.5,1) both}
+.c.fill.late{animation-delay:.5s}
+.c.wide{width:auto;min-width:var(--cell);padding:0 5px;font-size:calc(var(--cell)*.5)}
+.rt{display:flex;justify-content:center;font-size:11px;line-height:1.15;color:var(--mute);padding-bottom:2px;white-space:nowrap}
+.rt .pen{color:var(--bad);font-size:14px;font-weight:700;text-decoration:line-through;text-decoration-thickness:2px;animation:fade .25s ease-out}
+.read{font-family:var(--jp);font-size:1rem;color:var(--mute);margin-top:10px}
+.ru{margin-top:12px;color:var(--mute)}
 
-.mas{display:flex;align-items:flex-end;gap:10px;margin:4px 0 14px}
-.mas .yuki{width:122px}
-.mas .say{position:relative;background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:40px;font-size:.92rem;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
-.mas .say.bump{transform:scale(1.04)}
-.mas .say:before{content:"";position:absolute;left:-7px;bottom:14px;width:12px;height:12px;background:var(--sheet);border-left:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
-.mini{display:flex;align-items:flex-end;gap:10px}
-.mini .yuki{width:64px}
-.res .mini{margin-top:6px}
-.tile{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;color:var(--ink);font:inherit}
-.tile .ic{font:600 1.9rem/1 var(--jp);width:44px;text-align:center;color:var(--accent)}
-.tile .tx{flex:1}.tile .tx b{display:block}.tile .tx span{font-size:.85rem;color:var(--mute)}
-.tile:disabled{opacity:.45}
-.tile:not(:disabled):active{border-color:var(--accent)}
-.back{background:none;border:0;color:var(--accent);font:inherit;font-size:.9rem;padding:0 0 8px}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
-.cal i{display:block;aspect-ratio:1;border-radius:4px;border:1px solid var(--line);position:relative;overflow:hidden}
-.cal i u{position:absolute;inset:0;background:var(--accent)}
-.cal i.today{outline:2px solid var(--ink);outline-offset:1px}
-.cal.hd{margin-top:0;font-size:.75rem;color:var(--mute);text-align:center}
-.pb{display:flex;align-items:center;gap:10px;margin:8px 0}
-.pb .k{width:2.2rem;font:1.2rem var(--jp);text-align:center}
-.pb .t{flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
-.pb .t i{display:block;height:100%;background:var(--accent)}
-.pb .v{width:5.6rem;text-align:right;font-size:.82rem;color:var(--mute)}
+/* подсказка от Юки */
+.hintc{display:flex;align-items:flex-end;gap:10px;width:100%;text-align:left;border:0;background:var(--yk);color:var(--ink);padding:8px 14px 0;font:inherit;border-radius:22px;margin-bottom:10px;min-height:64px}
+button.hintc{cursor:pointer}
+button.hintc:active{transform:scale(.98)}
+.hintc .yuki{width:50px}
+.hintc .hx{flex:1;font-size:13px;font-weight:600;padding-bottom:12px}
+.hintc .note{background:none;padding:0;margin:0;font-weight:500}
+
+/* кнопки частиц */
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.key{height:56px;border-radius:16px;border:0;background:var(--card);color:var(--ink);font:800 23px/1 var(--jp);box-shadow:var(--shadow);cursor:pointer;transition:transform .3s var(--spring),background .2s,color .2s,opacity .2s}
+.key:not(:disabled):active{transform:scale(.92);transition:transform .08s}
+.key.w2{grid-column:span 2}
+.key.ok{background:var(--good);color:var(--ongood)}
+.key.no{background:var(--bad);color:var(--onbad)}
+.key.dim{opacity:.4}
+.key:disabled{cursor:default}
+.pop{animation:pop .45s cubic-bezier(.3,1.7,.5,1)}
+.shk{animation:shake .45s ease}
+.late{animation-delay:.4s}
+
+/* ===== карточка результата: выезжает снизу ===== */
+.res{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(560px,100%);max-height:72vh;overflow-y:auto;background:var(--card);border-radius:26px 26px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom));z-index:6;box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+.res:before{content:"";display:block;width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 8px}
+.res.up{animation:sheetUp .5s cubic-bezier(.2,1.05,.3,1) .42s both}
+.res.no.up{animation-delay:.7s}
+.res .card{background:var(--bg);box-shadow:none}
+.mini{display:flex;align-items:flex-end;gap:12px}
+.mini .yuki{width:58px}
+.verdict{font:800 20px var(--ui);padding-bottom:8px}
+.res.ok .verdict{color:var(--good)}
+.res.no .verdict{color:var(--bad)}
+.rule{margin:10px 0 6px}
+.goalmsg{margin-top:10px;font-size:.9rem;color:var(--mute)}
+
+/* ===== слова, глаголы, сборка ===== */
 .kicker{font-size:.8rem;color:var(--mute);text-align:center}
-.big{font:600 2.5rem/1.25 var(--jp);text-align:center;margin:6px 0 2px;word-break:keep-all}
+.big{font:800 2.6rem/1.25 var(--jp);text-align:center;margin:6px 0 2px;word-break:keep-all}
 .sub{font-family:var(--jp);text-align:center;color:var(--mute);min-height:1.5em}
 .sub2{text-align:center;font-size:.85rem;color:var(--mute);margin-top:4px}
 .sheet .links.lc{justify-content:center}
-.task{font-size:1.15rem;font-weight:600;text-align:center;margin-top:4px}
+.task{font:800 1.2rem/1.35 var(--ui);text-align:center;margin-top:4px}
 .choices{display:grid;gap:8px}
-.choice{min-height:52px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);font:inherit;text-align:left;padding:10px 14px}
-.choice:not(:disabled):active{background:var(--tint);border-color:var(--accent)}
-.choice.right{border-color:var(--good);color:var(--good);font-weight:600;border-width:2px}
-.choice.wrong{border-color:var(--pen);color:var(--pen);text-decoration:line-through}
-.choice.dim{opacity:.5}
-.slot{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;min-height:66px;padding:8px;border:1px dashed var(--grid);border-radius:8px;background:var(--sheet);margin-bottom:12px}
+.choice{min-height:54px;border-radius:16px;border:0;background:var(--card);color:var(--ink);font:600 15px var(--ui);text-align:left;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;transition:transform .3s var(--spring),background .2s,color .2s,opacity .2s}
+.choice:not(:disabled):active{transform:scale(.97);transition:transform .08s}
+.choice:disabled{cursor:default}
+.choice.right{background:var(--good);color:var(--ongood)}
+.choice.wrong{background:var(--bad);color:var(--onbad);text-decoration:line-through}
+.choice.dim{opacity:.45}
+.slot{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;min-height:74px;padding:10px;border:2px dashed var(--grid);border-radius:20px;background:var(--card);margin-bottom:12px}
 .slot:empty:before{content:"Нажимай на плитки по порядку";color:var(--mute);font-size:.88rem;align-self:center}
 .tiles{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
-.tl{display:inline-flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:48px;min-width:44px;padding:4px 10px 6px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);font:1.2rem/1.2 var(--jp)}
-.tl small{font-size:.6rem;line-height:1.2;color:var(--mute)}
-.tl:active{border-color:var(--accent)}
-.slot .tl{border-color:var(--accent);background:var(--tint);animation:fade .15s ease-out}
+.tl{display:inline-flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:50px;min-width:46px;padding:4px 12px 7px;border-radius:14px;border:0;background:var(--card);color:var(--ink);font:700 1.25rem/1.2 var(--jp);box-shadow:var(--shadow);cursor:pointer;transition:transform .25s var(--spring)}
+.tl:active{transform:scale(.92)}
+.tl small{font-size:.6rem;line-height:1.2;color:var(--mute);font-weight:500}
+.slot .tl{background:var(--tint);box-shadow:none}
 .tl.used{visibility:hidden}
-.hl{color:var(--accent);font-weight:700}
-.wrow{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.hl{color:var(--acc);font-weight:800}
+.wrow{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;padding:9px 0;border-top:1px solid var(--line)}
 .wrow:first-child{border-top:0;padding-top:0}
 .wrow:last-child{padding-bottom:0}
-.wj{font:1.15rem var(--jp);min-width:5.2rem}
+.wj{font:700 1.15rem var(--jp);min-width:5.2rem}
 .wr{font:.85rem var(--jp);color:var(--mute);min-width:5.6rem}
 .wt{flex:1;min-width:8rem;font-size:.9rem}
-.okm{color:var(--good);font-weight:700}
-.fx{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
-.fx span{font:.85rem var(--jp);border:1px solid var(--line);border-radius:6px;padding:1px 8px;color:var(--mute)}
-@keyframes stamp{0%{transform:scale(1.5) rotate(-8deg);opacity:0}100%{transform:none;opacity:1}}
+.okm{color:var(--good);font-weight:800}
+.fx{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.fx span{font:.85rem var(--jp);background:var(--bg);border-radius:8px;padding:2px 9px;color:var(--mute)}
+
+/* ===== прогресс ===== */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
+.cal i{display:block;aspect-ratio:1;border-radius:6px;background:var(--soft);position:relative;overflow:hidden}
+.cal i u{position:absolute;inset:0;background:var(--acc)}
+.cal i.today{outline:2px solid var(--acc2);outline-offset:1px}
+.in .cal i{animation:cellIn .35s var(--spring) backwards;animation-delay:calc(250ms + var(--c,0) * 14ms)}
+.cal.hd{margin-top:0;font-size:.75rem;color:var(--mute);text-align:center}
+.pb{display:flex;align-items:center;gap:10px;margin:8px 0}
+.pb .k{width:2.2rem;font:800 1.2rem var(--jp);text-align:center}
+.pb .tr{flex:1;height:10px;background:var(--soft);border-radius:6px;overflow:hidden}
+.pb .tr i{display:block;height:100%;border-radius:6px;background:var(--acc);transition:width 1s cubic-bezier(.3,.9,.3,1) .3s}
+.pb .v{width:5.6rem;text-align:right;font-size:.82rem;color:var(--mute)}
+
+/* слой «раскрытия» плитки в раздел */
+.morph{position:fixed;z-index:4;pointer-events:none;transform-origin:0 0;will-change:transform}
+
+@keyframes tileIn{from{opacity:0;transform:translateY(16px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes cellIn{from{transform:scale(0)}to{transform:none}}
+@keyframes stampCal{0%{transform:scale(1.9) rotate(-18deg);opacity:0}60%{opacity:1}100%{transform:none}}
+@keyframes stampIn{0%{transform:scale(1.6) rotate(-10deg);opacity:0}40%{opacity:1}100%{transform:none;opacity:1}}
+@keyframes burst{from{opacity:.9;transform:scale(.9)}to{opacity:0;transform:scale(1.45)}}
+@keyframes breathe{50%{background:color-mix(in srgb,var(--acc) 26%,transparent)}}
+@keyframes shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}}
+@keyframes pop{40%{transform:scale(1.12)}}
+@keyframes sheetUp{from{transform:translate(-50%,105%)}to{transform:translate(-50%,0)}}
 @keyframes fade{0%{opacity:0}100%{opacity:1}}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <main id="app"></main>
-<nav id="tabs">
+<div id="sheet"></div>
+<nav id="tabs"><i class="pill"></i>
   <button data-tab="home"><b lang="ja">学</b><span>Учить</span></button>
   <button data-tab="diary"><b lang="ja">誤</b><span>Ошибки</span></button>
   <button data-tab="progress"><b lang="ja">進</b><span>Прогресс</span></button>
@@ -237,7 +347,7 @@ label{font-size:.85rem;color:var(--mute)}
   var stats = LS.get('jp_stats', {});
   var custom = LS.get('jp_custom', []);
   var days = LS.get('jp_days', {});
-  var settings = Object.assign({ reading: false, speak: false, goal: 10 }, LS.get('jp_settings', {}));
+  var settings = Object.assign({ reading: false, speak: false, goal: 10, theme: 'auto' }, LS.get('jp_settings', {}));
   // Прогресс разделов «Слова», «Глаголы», «Собери предложение»: отдельные ключи, старые не трогаем.
   var wstats = LS.get('jp_words', {});
   var vstats = LS.get('jp_verbs', {});
@@ -245,6 +355,189 @@ label{font-size:.85rem;color:var(--mute)}
   var tab = 'home', mode = 'all', cur = null, notice = '', resetArmed = false;
   var wmode = 'quiz', vmode = 'mean', wq = null, vq = null, bq = null;
   var $app = document.getElementById('app');
+  var $sheet = document.getElementById('sheet');
+
+  // ---------- тема и движение ----------
+  // REAL — настоящий браузер (в tools/check.js страница идёт без DOM, там всё это пропускается).
+  var REAL = !!(document.querySelector && window.matchMedia);
+  var FX = REAL && !matchMedia('(prefers-reduced-motion: reduce)').matches && !!document.body.animate;
+  var EASE = 'cubic-bezier(.2,.9,.25,1)';
+  var busy = false, openedKey = null, prevSess = null, segPrev = {}, lastNav = null, bPop = -1, inTimer = 0;
+  var ui = LS.get('jp_ui', {});   // служебное: в какой день уже показали праздник цели
+  var darkMQ = REAL ? matchMedia('(prefers-color-scheme: dark)') : null;
+  function applyTheme() {
+    if (!REAL) return;
+    var t = settings.theme || 'auto', dark = t === 'dark' || (t !== 'light' && darkMQ.matches);
+    var root = document.documentElement;
+    if (FX) { root.classList.add('theming'); setTimeout(function () { root.classList.remove('theming'); }, 450); }
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    var m = document.querySelector('meta[name=theme-color]');
+    if (m) m.setAttribute('content', dark ? '#141519' : '#EEF4FA');
+  }
+  if (darkMQ) {
+    applyTheme();
+    if (darkMQ.addEventListener) darkMQ.addEventListener('change', applyTheme); else if (darkMQ.addListener) darkMQ.addListener(applyTheme);
+  }
+  function stopAnims(el) { if (el.getAnimations) el.getAnimations().forEach(function (a) { a.cancel(); }); }
+  function each(sel, f, root) { [].forEach.call((root || $app).querySelectorAll(sel), f); }
+  // число «отсчитывается» до нужного; у каждого элемента живёт только последний счёт
+  function countUp(el, to, ms, delay) {
+    var tok = el._tok = (el._tok || 0) + 1;
+    el.textContent = 0;
+    setTimeout(function () {
+      var t0 = performance.now();
+      (function f() {
+        if (el._tok !== tok) return;
+        var k = Math.min(1, (performance.now() - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+        el.textContent = Math.round(to * e);
+        if (k < 1) requestAnimationFrame(f);
+      })();
+    }, delay || 0);
+  }
+  // Вход на экран: карточки и плитки лесенкой, полоски растут с нуля, на главном — кольцо и счётчики.
+  function enterFx() {
+    if (!FX) return;
+    var n = 0;
+    [].forEach.call($app.children, function (c) {
+      var list = c.classList.contains('bento') ? c.children : [c];
+      [].forEach.call(list, function (el) { el.style.setProperty('--i', Math.min(n++, 10)); el.classList.add('st'); });
+    });
+    each('[data-w]', function (el) { var w = el.style.width; el.style.transition = 'none'; el.style.width = '0'; void el.offsetWidth; el.style.transition = ''; el.style.width = w; });
+    $app.classList.remove('in'); void $app.offsetWidth; $app.classList.add('in');
+    clearTimeout(inTimer);
+    inTimer = setTimeout(function () { $app.classList.remove('in'); each('.st', function (el) { el.classList.remove('st'); }); }, 1700);
+    if (tab === 'home') homeFx();
+  }
+  function homeFx() {
+    each('[data-cnt]', function (el) { countUp(el, +el.dataset.cnt, 900, 350); });
+    var fg = $app.querySelector('.ring .fg');
+    if (fg) {
+      fg.style.transition = 'none'; fg.style.strokeDashoffset = 226.2; void fg.getBoundingClientRect(); fg.style.transition = '';
+      setTimeout(function () { fg.style.strokeDashoffset = fg.dataset.off; }, 300);
+    }
+    // цель дня выполнена — один раз в день праздник: вспышка кольца, «штамп» в календаре, Юки радуется
+    var k = dayKey(), td = days[k], g = settings.goal;
+    if (td && g && td.n >= g && ui.cel !== k && !napShown) {
+      ui.cel = k; LS.set('jp_ui', ui);
+      setTimeout(function () {
+        if (tab !== 'home') return;
+        var r = $app.querySelector('.ring'), c = $app.querySelector('.mcal i.today'), y = $app.querySelector('[data-yuki^=home]');
+        if (r) { r.classList.remove('burst'); void r.offsetWidth; r.classList.add('burst'); }
+        if (c) c.classList.add('stamp');
+        if (y && window.Yuki) Yuki.react(y, 'goal');
+        bubble('Цель дня выполнена! Ты молодец!');
+      }, 1300);
+    }
+  }
+  // смена вкладки: старое растворяется, новое проявляется с лёгким масштабом
+  function switchTo(fn) {
+    if (!FX) { fn(); window.scrollTo(0, 0); return; }
+    busy = true; hideSheet();
+    $app.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.985)' }], { duration: 110, easing: 'ease-in', fill: 'forwards' }).onfinish = function () {
+      stopAnims($app); fn(); window.scrollTo(0, 0); enterFx();
+      $app.animate([{ opacity: 0, transform: 'scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: EASE });
+      busy = false;
+    };
+  }
+  // следующий вопрос: старый уезжает влево, новый приезжает справа
+  function slideNext(fn) {
+    if (!FX) { fn(); window.scrollTo(0, 0); return; }
+    busy = true; hideSheet();
+    $app.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-40px)' }], { duration: 160, easing: 'ease-in', fill: 'forwards' }).onfinish = function () {
+      stopAnims($app); fn(); window.scrollTo(0, 0);
+      $app.animate([{ opacity: 0, transform: 'translateX(48px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: EASE });
+      busy = false;
+    };
+  }
+  function morphLayer(r, color) {
+    var m = document.createElement('div');
+    m.className = 'morph';
+    m.style.cssText += ';left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;background:' + color;
+    document.body.appendChild(m);
+    return m;
+  }
+  function fullFrom(r) { return 'translate(' + (-r.left) + 'px,' + (-r.top) + 'px) scale(' + (innerWidth / r.width) + ',' + (innerHeight / r.height) + ')'; }
+  // плитка раскрывается в раздел...
+  function openFrom(tile, fn) {
+    if (!FX || !tile.getBoundingClientRect) { fn(); window.scrollTo(0, 0); enterFx(); return; }
+    busy = true; openedKey = tile.dataset.key;
+    var r = tile.getBoundingClientRect(), color = getComputedStyle(tile).backgroundColor;
+    var m = morphLayer({ left: 0, top: 0, width: innerWidth, height: innerHeight }, color);
+    var sx = r.width / innerWidth, sy = r.height / innerHeight;
+    $app.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' });
+    m.animate([
+      { transform: 'translate(' + r.left + 'px,' + r.top + 'px) scale(' + sx + ',' + sy + ')', borderRadius: '22px' },
+      { transform: 'none', borderRadius: '0px' }
+    ], { duration: 420, easing: EASE, fill: 'forwards' }).onfinish = function () {
+      stopAnims($app); fn(); window.scrollTo(0, 0); enterFx();
+      $app.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: EASE });
+      m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' }).onfinish = function () { m.remove(); busy = false; };
+    };
+  }
+  // ...и сворачивается обратно в свою плитку
+  function backTo(fn) {
+    var key = openedKey; openedKey = null;
+    if (!FX || !key) { switchTo(fn); return; }
+    busy = true; hideSheet();
+    stopAnims($app); $app.style.opacity = 0; fn(); window.scrollTo(0, 0);
+    var tile = $app.querySelector('[data-key="' + key + '"]');
+    if (!tile) { $app.style.opacity = ''; enterFx(); busy = false; return; }
+    var r = tile.getBoundingClientRect(), m = morphLayer(r, getComputedStyle(tile).backgroundColor);
+    m.animate([
+      { transform: fullFrom(r), borderRadius: '0px', opacity: 0 },
+      { opacity: 1, offset: 0.2 },
+      { transform: 'none', borderRadius: '22px', opacity: 1 }
+    ], { duration: 420, easing: EASE, fill: 'forwards' }).onfinish = function () {
+      $app.style.opacity = ''; enterFx();
+      $app.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+      m.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).onfinish = function () { m.remove(); busy = false; };
+    };
+  }
+  // карточка результата уезжает вниз (сама она живёт вне #app, чтобы не ездить вместе с экраном)
+  function hideSheet() {
+    var r = REAL && $sheet.querySelector('.res');
+    if (!r) return;
+    $app.style.paddingBottom = '';
+    if (!FX) { r.remove(); return; }
+    document.body.appendChild(r);
+    r.classList.remove('up');
+    r.style.pointerEvents = 'none';
+    r.animate([{ transform: 'translate(-50%,0)' }, { transform: 'translate(-50%,105%)' }], { duration: 220, easing: 'ease-in', fill: 'forwards' }).onfinish = function () { r.remove(); };
+  }
+  // после каждой отрисовки
+  function afterRender() {
+    if (!REAL) return;
+    var res = $app.querySelector('.res');
+    $sheet.innerHTML = '';
+    if (res) $sheet.appendChild(res);
+    $app.style.paddingBottom = res ? (res.offsetHeight + 24) + 'px' : '';
+    var segs = $app.querySelectorAll('.seg[data-to]'), ws = $app.querySelectorAll('[data-wto]');
+    if (segs.length || ws.length) {
+      void $app.offsetWidth;
+      [].forEach.call(segs, function (s) { s.style.setProperty('--k', s.dataset.to); });
+      [].forEach.call(ws, function (el) { el.style.width = el.dataset.wto + '%'; });
+    }
+  }
+  // Переключатель с бегунком. Бегунок рисуется на прошлом месте и переезжает на новое.
+  function segBox(key, items) {
+    var on = 0;
+    items.forEach(function (x, i) { if (x.on) on = i; });
+    var from = segPrev[key];
+    segPrev[key] = on;
+    if (from == null) from = on;
+    return '<div class="seg" style="--n:' + items.length + ';--k:' + from + '" data-to="' + on + '"><i class="knob"></i>' + items.map(function (x) {
+      return '<button ' + x.a + (x.on ? ' class="on"' : '') + (x.off ? ' disabled' : '') + '>' + esc(x.t) + '</button>';
+    }).join('') + '</div>';
+  }
+  // Анимации ответа проигрываются один раз: при повторной отрисовке (фуригана, озвучка) всё стоит спокойно.
+  function fxOnce(q) { var f = q.done && !q.fxDone; if (q.done) q.fxDone = true; return f; }
+  // верх раздела: назад и полоска цели дня
+  function topHtml(back) {
+    var td = days[dayKey()] || { n: 0 }, goal = settings.goal || 0, pct = goal ? Math.min(100, Math.round(td.n / goal * 100)) : 0, done = goal && td.n >= goal;
+    var from = prevSess == null ? pct : prevSess;
+    prevSess = pct;
+    return '<div class="top"><button class="bk" data-tab="' + back + '" aria-label="Назад">‹</button><div class="sess' + (done ? ' done' : '') + '"><i style="width:' + from + '%" data-wto="' + pct + '"></i></div><span class="sn">' + td.n + (goal ? '/' + goal : '') + '</span>' + (done ? '<i class="seal" lang="ja">済</i>' : '') + '</div>';
+  }
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -364,11 +657,12 @@ label{font-size:.85rem;color:var(--mute)}
   // Переносы только между «словами» (иероглифы + окончание), чтобы не рвать слово пополам.
   var OKU = 7;
   function cellHtml(ch) { return '<span class="c">' + esc(ch) + '</span>'; }
-  function blankCell(fill) {
+  function blankCell(fill, anim) {
     if (!fill) return '<span class="c blank"></span>';
-    return '<span class="c fill' + (fill.length > 1 ? ' wide' : '') + '">' + esc(fill) + '</span>';
+    return '<span class="c fill' + (fill.length > 1 ? ' wide' : '') + (anim || '') + '">' + esc(fill) + '</span>';
   }
-  function gridHtml(it, fill, wantRuby, wrong) {
+  // anim — классы анимации для заполненной клетки (' pop' или ' pop late'), необязательно
+  function gridHtml(it, fill, wantRuby, wrong, anim) {
     var parts = wantRuby ? furigana(it.t, it.r) : null;
     var ruby = !!parts;
     if (!parts) parts = splitTokens(it.t);
@@ -382,7 +676,7 @@ label{font-size:.85rem;color:var(--mute)}
       }
       Array.from(p.s).forEach(function (ch) {
         if (ch === '＿') {
-          last = { rn: 1, rt: wrong ? '<s class="pen">' + esc(wrong) + '</s>' : '', cells: [blankCell(fill)] };
+          last = { rn: 1, rt: wrong ? '<s class="pen">' + esc(wrong) + '</s>' : '', cells: [blankCell(fill, anim)] };
           units.push(last);
           prev = null;
         } else if (/[。、！？]/.test(ch) && last) {
@@ -485,27 +779,40 @@ label{font-size:.85rem;color:var(--mute)}
   }
 
   // ---------- экраны ----------
+  var KEYS = ['は','が','を','に','で','へ','と','も','の','や','か','から','まで'];
   function renderPractice() {
-    var it = cur.item, k = allItems().filter(isActive).length;
-    var h = noticeHtml() + '<button class="back" data-tab="home">‹ Разделы</button>' + meterHtml();
-    h += '<div class="seg"><button data-act="mode" data-m="all"' + (mode === 'all' ? ' class="on"' : '') + '>Все предложения</button><button data-act="mode" data-m="mistakes"' + (mode === 'mistakes' ? ' class="on"' : '') + (k ? '' : ' disabled') + '>Мои ошибки (' + k + ')</button></div>';
+    var it = cur.item, k = allItems().filter(isActive).length, fx = fxOnce(cur);
+    var h = noticeHtml() + topHtml('home');
+    h += segBox('mode', [
+      { a: 'data-act="mode" data-m="all"', t: 'Все предложения', on: mode === 'all' },
+      { a: 'data-act="mode" data-m="mistakes"', t: 'Мои ошибки (' + k + ')', on: mode === 'mistakes', off: !k }
+    ]);
     var fill = cur.done ? (cur.ok ? cur.chosen : it.a[0]) : null;
-    var g = gridHtml(it, fill, !!(cur.showR && it.r), cur.done && !cur.ok ? cur.chosen : '');
-    h += '<section class="sheet">' + g.html;
+    var g = gridHtml(it, fill, !!(cur.showR && it.r), cur.done && !cur.ok ? cur.chosen : '', fx ? (cur.ok ? ' pop' : ' pop late') : '');
+    h += '<section class="sheet' + (cur.done ? (cur.ok ? ' okg' : ' badg' + (fx ? ' shk' : '')) : '') + '">' + g.html;
     if (cur.showR && it.r && !g.ruby) h += '<div class="read">' + sentHtml(it.r, fill) + '</div>';
     h += '<div class="ru">' + esc(it.ru) + '</div><div class="links">';
     if (it.r) h += '<button class="link" data-act="reading">' + (cur.showR ? 'Скрыть фуригану' : 'Показать фуригану') + '</button>';
     if (cur.done) h += '<button class="link" data-act="speak">Послушать</button>';
-    else if (!cur.hint) h += '<button class="link" data-act="hint">Подсказка</button>';
     h += '</div></section>';
     if (!cur.done) {
-      if (cur.hint) h += '<div class="note">' + esc(ruleFor(it, it.a[0], 0)) + '</div>';
-      h += '<div class="opts">' + ['は','が','を','に','で','へ','と','も','の','や','か','から','まで'].map(function (p) {
-        return '<button class="key' + (p.length > 1 || p === 'か' ? ' w2' : '') + '" lang="ja" data-act="ans" data-p="' + p + '">' + p + '</button>';
-      }).join('') + '</div>';
-    } else {
+      // подсказка — от Юки: нажал на карточку, и она объясняет правило
+      h += cur.hint
+        ? '<div class="hintc"><span class="yk-slot" data-yuki="calm"></span><div class="hx"><div class="note">' + esc(ruleFor(it, it.a[0], 0)) + '</div></div></div>'
+        : '<button class="hintc" data-act="hint"><span class="yk-slot" data-yuki="calm"></span><span class="hx">Не уверен? Нажми — подскажу правило.</span></button>';
+    }
+    h += '<div class="opts">' + KEYS.map(function (p) {
+      var c = 'key' + (p.length > 1 || p === 'か' ? ' w2' : '');
+      if (cur.done) {
+        if (it.a.indexOf(p) >= 0) c += ' ok' + (fx ? ' pop' + (cur.ok ? '' : ' late') : '');
+        else if (p === cur.chosen) c += ' no' + (fx ? ' shk' : '');
+        else c += ' dim';
+      }
+      return '<button class="' + c + '" lang="ja" data-act="ans" data-p="' + p + '"' + (cur.done ? ' disabled' : '') + '>' + p + '</button>';
+    }).join('') + '</div>';
+    if (cur.done) {
       var rules = it.a.map(function (p, i) { return '<b lang="ja">' + esc(p) + '</b> — ' + esc(ruleFor(it, p, i)); }).join('<br>');
-      h += '<div class="res ' + (cur.ok ? 'ok' : 'no') + '"><div class="mini">' + ykSlot(cur, cur.goal || /освоенным/.test(cur.extra) ? 'goal' : cur.ok ? 'ok' : 'bad') + '<div class="verdict">' + esc(cur.msg) + '</div></div>';
+      h += '<div class="res ' + (cur.ok ? 'ok' : 'no') + (fx ? ' up' : '') + '"><div class="mini">' + ykSlot(cur, cur.goal || /освоенным/.test(cur.extra) ? 'goal' : cur.ok ? 'ok' : 'bad') + '<div class="verdict">' + esc(cur.msg) + '</div></div>';
       if (!cur.ok) h += '<div>Ты выбрал <b lang="ja">' + esc(cur.chosen) + '</b>, а здесь нужно <b lang="ja">' + esc(it.a.join(' или ')) + '</b>.</div><div class="small">Ошибка записана в дневник.</div>';
       else if (it.a.length > 1) h += '<div class="small">Здесь подходят: ' + esc(it.a.join(', ')) + '.</div>';
       h += '<div class="rule">' + rules + '</div>';
@@ -520,12 +827,6 @@ label{font-size:.85rem;color:var(--mute)}
   function rowHtml(it) {
     var s = stats[it.id];
     return '<div class="item"><div class="sent sm">' + sentHtml(it.t, it.a[0]) + '</div><div class="small">' + esc(it.ru) + '</div><div class="small">Ошибок: <b>' + s.w + '</b> · твои ответы: ' + esc(uniq(s.bad || []).join(', ')) + '</div></div>';
-  }
-  function meterHtml() {
-    var td = days[dayKey()] || { n: 0, ok: 0 }, tn = 0, tok = 0;
-    for (var d in days) { tn += days[d].n; tok += days[d].ok; }
-    var goal = settings.goal || 0, pct = goal ? Math.min(100, Math.round(td.n / goal * 100)) : 0;
-    return '<div class="meter"><span>Сегодня <b>' + td.n + (goal ? '/' + goal : '') + '</b>' + (goal && td.n >= goal ? '<i class="seal" lang="ja">済</i>' : '') + '</span><span>Серия <b>' + streak() + ' дн.</b></span><span>Точность <b>' + (tn ? Math.round(tok / tn * 100) + '%' : '—') + '</b></span></div><div class="bar"><i style="width:' + pct + '%"></i></div>';
   }
   function masteredCount() {
     var all = allItems(), m = all.filter(function (it) { var s = stats[it.id]; return s && s.c >= 3; }).length;
@@ -555,11 +856,11 @@ label{font-size:.85rem;color:var(--mute)}
   }
   var TAP_LINES = ['Хи-хи, щекотно!', 'Я Юки. Позанимаемся?', 'Ещё одно предложение?', 'がんばって! — «Держись!»', 'Ошибки — это нормально, на них и учатся.'];
   function bubble(t) {
-    var s = document.querySelector && document.querySelector('.mas .say');
+    var s = REAL && document.querySelector('.t.yk .say');
     if (!s) return;
-    s.textContent = t;
-    s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump');
-    setTimeout(function () { s.classList.remove('bump'); }, 260);
+    if (!FX) { s.textContent = t; return; }
+    s.style.opacity = 0;
+    setTimeout(function () { s.textContent = t; s.style.opacity = 1; }, 180);
   }
   function mountYuki() {
     if (!window.Yuki || !document.querySelectorAll) return;
@@ -586,21 +887,42 @@ label{font-size:.85rem;color:var(--mute)}
     })(slots[i]);
   }
 
+  // число, которое на входе «отсчитывается» с нуля
+  function cnt(n) { return '<span data-cnt="' + n + '">' + n + '</span>'; }
   function renderHome() {
-    var h = noticeHtml() + meterHtml(), mc = masteredCount(), k = allItems().filter(isActive).length;
+    var h = noticeHtml(), mc = masteredCount(), k = allItems().filter(isActive).length, V = vocab();
     var away = daysAway(), sleepy = away >= 2 && !napShown;
-    h += '<div class="mas"><span class="yk-slot" data-yuki="' + (sleepy ? 'home-sleep' : 'home') + '"></span><div class="say">' +
-      esc(sleepy ? 'Юки задремала… Тебя не было ' + plural(away, 'день', 'дня', 'дней') + '.' : greet()) + '</div></div>';
-    h += '<button class="tile" data-act="open" data-m="all"><span class="ic" lang="ja">は</span><span class="tx"><b>Частицы</b><span>Освоено ' + mc.m + ' из ' + mc.n + ' предложений</span></span></button>';
-    if (k) h += '<button class="tile" data-act="open" data-m="mistakes"><span class="ic" lang="ja">誤</span><span class="tx"><b>Мои ошибки</b><span>' + k + ' в работе — повтори, пока свежо</span></span></button>';
-    var V = vocab(), built = Object.keys(bstats).filter(function (id) { return bstats[id].c > 0; }).length;
-    h += '<button class="tile" data-tab="build"><span class="ic" lang="ja">組</span><span class="tx"><b>Собери предложение</b><span>' + (built ? 'Собрано верно: ' + built : 'Плитки из предложений приложения') + '</span></span></button>';
-    h += '<button class="tile" data-tab="words"><span class="ic" lang="ja">語</span><span class="tx"><b>Слова</b><span>Выучено ' + learned(wstats, V.words) + ' из ' + plural(V.words.length, 'слова', 'слов', 'слов') + '</span></span></button>';
-    h += '<button class="tile" data-tab="verbs"><span class="ic" lang="ja">動</span><span class="tx"><b>Глаголы</b><span>Выучено ' + learned(vstats, V.verbs) + ' из ' + plural(V.verbs.length, 'глагола', 'глаголов', 'глаголов') + ' · формы</span></span></button>';
-    return h;
+    var td = days[dayKey()] || { n: 0 }, goal = settings.goal || 10, done = td.n >= goal, st = streak();
+    h += '<h1>' + (sleepy ? 'Тсс… Юки спит' : 'Привет, это Юки') + '</h1><div class="bento">';
+    // Юки и её реплика
+    h += '<div class="t yk"><div class="say">' + esc(sleepy ? 'Юки задремала… Тебя не было ' + plural(away, 'день', 'дня', 'дней') + '.' : greet()) + '</div><span class="yk-slot" data-yuki="' + (sleepy ? 'home-sleep' : 'home') + '"></span></div>';
+    // кольцо цели дня
+    var off = (226.2 * (1 - Math.min(td.n, goal) / goal)).toFixed(1);
+    h += '<div class="t"><div class="ring' + (done ? ' done' : '') + '"><svg viewBox="0 0 92 92" aria-hidden="true"><circle class="bgc" cx="46" cy="46" r="36"/><circle class="fg" cx="46" cy="46" r="36" style="stroke-dashoffset:' + off + '" data-off="' + off + '"/></svg>' +
+      '<div class="val"><span>' + cnt(td.n) + '/' + goal + '</span></div></div><div class="lab" style="text-align:center">цель дня</div></div>';
+    // серия: последние две недели
+    var cells = '', c = 0, now = new Date();
+    for (var i = 13; i >= 0; i--) {
+      var d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i), e = days[dayKey(d)];
+      var cls = i === 0 && done ? 'today' : e && e.n > 0 ? 'f' : '';
+      cells += '<i' + (cls ? ' class="' + cls + '" style="--c:' + (c++) + '"' : '') + '></i>';
+    }
+    h += '<div class="t"><div class="lab">серия</div><div class="num">' + cnt(st) + ' дн.</div><div class="mcal">' + cells + '</div></div>';
+    // разделы
+    var pp = mc.n ? Math.round(mc.m / mc.n * 100) : 0;
+    h += '<button class="t wide c1" data-act="open" data-m="all" data-key="practice"><span class="i" lang="ja">は</span><span class="tx"><b>Частицы</b><span class="ts">Освоено ' + cnt(mc.m) + ' из ' + mc.n + '</span><span class="tbar"><i style="width:' + pp + '%" data-w></i></span></span><span class="num" style="font-size:24px">' + cnt(pp) + '%</span></button>';
+    if (k) h += '<button class="t wide c4" data-act="open" data-m="mistakes" data-key="mistakes"><span class="i" lang="ja">誤</span><span class="tx"><b>Мои ошибки</b><span class="ts">' + k + ' в работе — повтори, пока свежо</span></span></button>';
+    var lw = learned(wstats, V.words), lv = learned(vstats, V.verbs);
+    h += '<button class="t c2" data-tab="words" data-key="words"><span class="i" lang="ja">語</span><b>Слова</b><span class="ts">' + cnt(lw) + ' из ' + V.words.length + '</span><span class="tbar"><i style="width:' + Math.round(lw / Math.max(1, V.words.length) * 100) + '%" data-w></i></span></button>';
+    h += '<button class="t c3" data-tab="verbs" data-key="verbs"><span class="i" lang="ja">動</span><b>Глаголы</b><span class="ts">' + cnt(lv) + ' из ' + V.verbs.length + '</span><span class="tbar"><i style="width:' + Math.round(lv / Math.max(1, V.verbs.length) * 100) + '%" data-w></i></span></button>';
+    var built = 0, bs = 0, bw = 0;
+    for (var id in bstats) { if (bstats[id].c > 0) built++; bs += bstats[id].seen || 0; bw += bstats[id].w || 0; }
+    h += '<button class="t wide" data-tab="build" data-key="build"><span class="i" lang="ja">組</span><span class="tx"><b>Собери предложение</b><span class="ts">' + (built ? 'Собрано верно: ' + built : 'Плитки из предложений приложения') + '</span></span>' +
+      (bs ? '<span class="rt2">точность ' + cnt(Math.round((bs - bw) / bs * 100)) + '%</span>' : '') + '</button>';
+    return h + '</div>';
   }
   function renderProgress() {
-    var h = noticeHtml() + '<h2>Прогресс</h2>', mc = masteredCount();
+    var h = noticeHtml() + '<h1>Прогресс</h1>', mc = masteredCount();
     var goal = settings.goal || 10, wd = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
     var now = new Date(), dow = (now.getDay() + 6) % 7, start = new Date(now);
     start.setDate(now.getDate() - dow - 28);
@@ -610,10 +932,10 @@ label{font-size:.85rem;color:var(--mute)}
       var key = dayKey(d), e = days[key], fut = d > now && key !== dayKey(now);
       if (e) { total += e.n; act++; }
       var a = e ? Math.min(1, 0.25 + 0.75 * e.n / goal) : 0;
-      cells += '<i' + (key === dayKey(now) ? ' class="today"' : '') + (fut ? ' style="opacity:.35"' : '') + ' title="' + key + '">' + (e ? '<u style="opacity:' + a.toFixed(2) + '"></u>' : '') + '</i>';
+      cells += '<i style="--c:' + i + (fut ? ';opacity:.35' : '') + '"' + (key === dayKey(now) ? ' class="today"' : '') + ' title="' + key + '">' + (e ? '<u style="opacity:' + a.toFixed(2) + '"></u>' : '') + '</i>';
     }
     h += '<div class="card"><h3>Последние 5 недель</h3><div class="cal hd">' + wd.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div><div class="cal">' + cells + '</div>';
-    h += '<div class="small">Занимался ' + act + ' дн., ответов: ' + total + '. Чем темнее клетка, тем ближе к цели дня.</div></div>';
+    h += '<div class="small">Занимался ' + act + ' дн., ответов: ' + total + '. Чем ярче клетка, тем ближе к цели дня.</div></div>';
     var by = {};
     allItems().forEach(function (it) {
       var p = it.a[0], s = stats[it.id], o = by[p] || (by[p] = { seen: 0, w: 0 });
@@ -627,14 +949,14 @@ label{font-size:.85rem;color:var(--mute)}
       ps.sort(function (a, b) { return (1 - by[a].w / by[a].seen) - (1 - by[b].w / by[b].seen) || by[b].seen - by[a].seen; });
       h += ps.map(function (p) {
         var o = by[p], ok = Math.max(0, o.seen - o.w), pc = Math.round(ok / o.seen * 100);
-        return '<div class="pb"><span class="k" lang="ja">' + esc(p) + '</span><span class="t"><i style="width:' + pc + '%"></i></span><span class="v">' + ok + ' из ' + o.seen + '</span></div>';
+        return '<div class="pb"><span class="k" lang="ja">' + esc(p) + '</span><span class="tr"><i style="width:' + pc + '%" data-w></i></span><span class="v">' + ok + ' из ' + o.seen + '</span></div>';
       }).join('');
       h += '<div class="small">Полоска — доля верных ответов, справа — сколько верно из всех. Сверху самые слабые частицы, внизу самые уверенные.</div>';
     }
     return h + '</div>';
   }
   function renderDiary() {
-    var h = noticeHtml() + '<h2>Дневник ошибок</h2>';
+    var h = noticeHtml() + '<h1>Дневник ошибок</h1>';
     var rows = allItems().filter(function (it) { return stats[it.id] && stats[it.id].w > 0; });
     if (!rows.length) return h + '<div class="card small">Пока пусто. Ошибки появятся здесь сами, вносить ничего не нужно.</div>';
     var act = rows.filter(isActive).sort(function (a, b) { return stats[b.id].w - stats[a.id].w; });
@@ -642,8 +964,8 @@ label{font-size:.85rem;color:var(--mute)}
     var byP = {};
     rows.forEach(function (it) { var p = it.a[0]; byP[p] = (byP[p] || 0) + stats[it.id].w; });
     var top = Object.keys(byP).sort(function (a, b) { return byP[b] - byP[a]; }).slice(0, 4);
-    h += '<div class="card"><div class="small">Чаще всего ошибаешься на:</div><div class="chips">' +
-      top.map(function (p) { return '<span class="chip"><b>' + esc(p) + '</b> ×' + byP[p] + '</span>'; }).join('') +
+    h += '<div class="card"><div class="small" style="margin:0">Чаще всего ошибаешься на:</div><div class="chips">' +
+      top.map(function (p) { return '<span class="chip"><b lang="ja">' + esc(p) + '</b>×' + byP[p] + '</span>'; }).join('') +
       '</div><button class="primary" data-act="train"' + (act.length ? '' : ' disabled') + '>Тренировать ошибки (' + act.length + ')</button></div>';
     if (act.length) h += '<h3>В работе</h3><div class="card">' + act.map(rowHtml).join('') + '</div>';
     if (done.length) h += '<h3>Освоено (3 верных подряд)</h3><div class="card">' + done.map(rowHtml).join('') + '</div>';
@@ -652,7 +974,7 @@ label{font-size:.85rem;color:var(--mute)}
 
   function renderAdd() {
     var opts = PARTS.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
-    var h = noticeHtml() + '<button class="back" data-tab="more">‹ Ещё</button><h2>Своё предложение</h2><div class="card">';
+    var h = noticeHtml() + '<div class="top"><button class="bk" data-tab="more" aria-label="Назад">‹</button><h2>Своё предложение</h2></div><div class="card">';
     h += '<label>Предложение (на месте частицы поставь ＿ или _)</label><textarea id="f-t" rows="2"></textarea>';
     h += '<label>Чтение хираганой (необязательно, тоже с ＿)</label><textarea id="f-r" rows="2"></textarea>';
     h += '<div class="row"><div><label>Правильная частица</label><select id="f-a1">' + opts + '</select></div><div><label>Или ещё подходит</label><select id="f-a2"><option value="">—</option>' + opts + '</select></div></div>';
@@ -666,16 +988,26 @@ label{font-size:.85rem;color:var(--mute)}
     return h;
   }
 
+  function togHtml(act, on, label) {
+    return '<div class="card sw"><span>' + label + '</span><button class="tog' + (on ? ' on' : '') + '" data-act="' + act + '" aria-pressed="' + on + '" aria-label="' + label + '"></button></div>';
+  }
   function renderMore() {
-    var h = noticeHtml() + '<h2>Ещё</h2>';
-    h += '<div class="card"><div class="sw"><span>Всегда показывать фуригану</span><button class="tog' + (settings.reading ? ' on' : '') + '" data-act="defread">' + (settings.reading ? 'Вкл' : 'Выкл') + '</button></div></div>';
-    h += '<div class="card"><div style="margin-bottom:10px">Цель на день (ответов)</div><div class="seg" style="margin-bottom:0">' + [5, 10, 20, 30].map(function (n) { return '<button data-act="goal" data-n="' + n + '"' + (settings.goal === n ? ' class="on"' : '') + '>' + n + '</button>'; }).join('') + '</div></div>';
-    h += '<div class="card"><div class="sw"><span>Озвучивать предложение после ответа</span><button class="tog' + (settings.speak ? ' on' : '') + '" data-act="defspeak">' + (settings.speak ? 'Вкл' : 'Выкл') + '</button></div></div>';
+    var h = noticeHtml() + '<h1>Ещё</h1>', th = settings.theme || 'auto';
+    h += '<div class="card"><div>Тема</div>' + segBox('theme', [
+      { a: 'data-act="theme" data-v="auto"', t: 'Авто', on: th === 'auto' },
+      { a: 'data-act="theme" data-v="light"', t: 'Светлая', on: th === 'light' },
+      { a: 'data-act="theme" data-v="dark"', t: 'Тёмная', on: th === 'dark' }
+    ]) + '</div>';
+    h += togHtml('defread', settings.reading, 'Всегда показывать фуригану');
+    h += '<div class="card"><div>Цель на день (ответов)</div>' + segBox('goal', [5, 10, 20, 30].map(function (n) {
+      return { a: 'data-act="goal" data-n="' + n + '"', t: String(n), on: settings.goal === n };
+    })) + '</div>';
+    h += togHtml('defspeak', settings.speak, 'Озвучивать предложение после ответа');
+    h += '<button class="t wide c2" data-tab="add" style="margin-bottom:10px"><span class="i" lang="ja">加</span><span class="tx"><b>Мои предложения</b><span class="ts">Добавить свою фразу (' + custom.length + ')</span></span></button>';
     h += '<div class="card"><h3>Резервная копия</h3><div class="small">Ошибки, свои предложения и серия хранятся только в этом браузере. Если очистить данные Chrome, всё пропадёт, поэтому иногда сохраняй копию.</div>';
     h += '<button class="primary" data-act="export">Сохранить копию (файл)</button>';
     h += '<button class="ghost" data-act="import">Загрузить копию</button><input type="file" id="imp" accept="application/json,.json" style="display:none"><div class="small">Загрузка заменит текущие данные.</div></div>';
     h += '<div class="card"><h3>Сброс</h3><button class="danger" data-act="reset" style="margin-top:0">' + (resetArmed ? 'Точно сбросить? Нажми ещё раз' : 'Сбросить прогресс и ошибки') + '</button><div class="small">Свои предложения останутся.</div></div>';
-    h += '<button class="tile" data-tab="add"><span class="ic" lang="ja">加</span><span class="tx"><b>Мои предложения</b><span>Добавить свою фразу (' + custom.length + ')</span></span></button>';
     h += '<div class="card small">Чтобы поставить на экран: меню Chrome ⋮ → «Установить приложение» или «Добавить на главный экран». После этого работает и без интернета.</div>';
     return h;
   }
@@ -794,19 +1126,18 @@ label{font-size:.85rem;color:var(--mute)}
     return '<div class="card" style="margin-top:12px"><div class="small" style="margin:0 0 8px">Из предложений приложения (всего ' + ex.length + '):</div>' + pick.map(exHtml).join('') + '</div>';
   }
   function segHtml(act, curMode, list) {
-    return '<div class="seg">' + list.map(function (x) {
-      return '<button data-act="' + act + '" data-m="' + x[0] + '"' + (curMode === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
-    }).join('') + '</div>';
+    return segBox(act, list.map(function (x) { return { a: 'data-act="' + act + '" data-m="' + x[0] + '"', t: x[1], on: curMode === x[0] }; }));
   }
-  function choiceButtons(q, act) {
+  function choiceButtons(q, act, fx) {
     return '<div class="choices">' + q.opts.map(function (o, i) {
       var cls = 'choice';
-      if (q.done) cls += o === q.right ? ' right' : i === q.chosen ? ' wrong' : ' dim';
+      if (q.done) cls += o === q.right ? ' right' + (fx ? ' pop' + (q.ok ? '' : ' late') : '') : i === q.chosen ? ' wrong' + (fx ? ' shk' : '') : ' dim';
       return '<button class="' + cls + '" data-act="' + act + '" data-i="' + i + '"' + (q.done ? ' disabled' : '') + '>' + esc(o) + '</button>';
     }).join('') + '</div>';
   }
-  function verdictHtml(q, body, nextAct) {
-    var h = '<div class="res ' + (q.ok ? 'ok' : 'no') + '" style="margin-top:14px"><div class="mini">' + ykSlot(q, q.goal || (q.ok && q.extra) ? 'goal' : q.ok ? 'ok' : 'bad') + '<div class="verdict">' + esc(q.msg) + '</div></div>' + body;
+  function sheetCls(q, fx) { return 'sheet' + (q.done ? (q.ok ? ' okg' : ' badg' + (fx ? ' shk' : '')) : ''); }
+  function verdictHtml(q, body, nextAct, fx) {
+    var h = '<div class="res ' + (q.ok ? 'ok' : 'no') + (fx ? ' up' : '') + '"><div class="mini">' + ykSlot(q, q.goal || (q.ok && q.extra) ? 'goal' : q.ok ? 'ok' : 'bad') + '<div class="verdict">' + esc(q.msg) + '</div></div>' + body;
     if (q.extra) h += '<div class="small">' + esc(q.extra) + '</div>';
     if (q.goal) h += '<div class="goalmsg"><i class="seal" lang="ja" style="margin:0 6px 0 0">済</i>Цель на сегодня выполнена: ' + settings.goal + ' ответов. Можно остановиться или продолжить.</div>';
     return h + '<button class="primary" data-act="' + nextAct + '">Дальше</button></div>';
@@ -833,20 +1164,20 @@ label{font-size:.85rem;color:var(--mute)}
     wq = { it: it, opts: choicesOf(it.ru, pool), right: it.ru, done: false, showR: settings.reading, say: firstReading(it.r) };
   }
   function renderWords() {
-    var V = vocab(), h = noticeHtml() + '<button class="back" data-tab="home">‹ Разделы</button>' + meterHtml();
+    var V = vocab(), h = noticeHtml() + topHtml('home');
     h += segHtml('wseg', wmode, [['quiz', 'Тренировка'], ['list', 'Список (' + V.words.length + ')']]);
     if (wmode === 'list') return h + wordListHtml(V);
     if (!wq) newWordQ();
-    var it = wq.it, needR = it.r !== it.w;
-    h += '<section class="sheet"><div class="kicker">' + esc(window.WORD_KINDS[it.k] || '') + ' · что это значит?</div><div class="big" lang="ja">' + esc(it.w) + '</div>';
+    var it = wq.it, needR = it.r !== it.w, fx = fxOnce(wq);
+    h += '<section class="' + sheetCls(wq, fx) + '"><div class="kicker">' + esc(window.WORD_KINDS[it.k] || '') + ' · что это значит?</div><div class="big" lang="ja">' + esc(it.w) + '</div>';
     h += '<div class="sub">' + (needR && (wq.showR || wq.done) ? esc(it.r) : '') + '</div><div class="links lc">';
     if (needR && !wq.done) h += '<button class="link" data-act="wread">' + (wq.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
     h += '<button class="link" data-act="wsay">Послушать</button></div></section>';
-    h += choiceButtons(wq, 'wans');
+    h += choiceButtons(wq, 'wans', fx);
     if (wq.done) {
       var body = '<div class="rule"><b lang="ja">' + esc(it.w) + '</b>' + (needR ? ' <span lang="ja">(' + esc(it.r) + ')</span>' : '') + ' — ' + esc(it.ru) + '</div>';
       if (it.alt.length) body += '<div class="small">Встречается и так: <span lang="ja">' + esc(it.alt.join(', ')) + '</span></div>';
-      h += verdictHtml(wq, body + examplesHtml(it.ex), 'wnext');
+      h += verdictHtml(wq, body + examplesHtml(it.ex), 'wnext', fx);
     }
     return h;
   }
@@ -875,27 +1206,27 @@ label{font-size:.85rem;color:var(--mute)}
     }
   }
   function renderVerbs() {
-    var V = vocab(), h = noticeHtml() + '<button class="back" data-tab="home">‹ Разделы</button>' + meterHtml();
+    var V = vocab(), h = noticeHtml() + topHtml('home');
     h += segHtml('vseg', vmode, [['mean', 'Значение'], ['form', 'Формы'], ['list', 'Список (' + V.verbs.length + ')']]);
     if (vmode === 'list') return h + verbListHtml(V);
     if (!vq || vq.mode !== vmode) newVerbQ();
-    var q = vq, body, vb = q.mode === 'form' ? q.it.v : q.it, needR = vb.r !== vb.d, rdg = needR ? ' <span lang="ja">(' + esc(vb.r) + ')</span>' : '';
+    var q = vq, fx = fxOnce(q), body, vb = q.mode === 'form' ? q.it.v : q.it, needR = vb.r !== vb.d, rdg = needR ? ' <span lang="ja">(' + esc(vb.r) + ')</span>' : '';
     if (q.mode === 'form') {
       var f = q.it;
-      h += '<section class="sheet"><div class="kicker">Какая это форма?</div><div class="big" lang="ja">' + esc(f.s) + '</div>';
+      h += '<section class="' + sheetCls(q, fx) + '"><div class="kicker">Какая это форма?</div><div class="big" lang="ja">' + esc(f.s) + '</div>';
       h += '<div class="sub2">от <span lang="ja">' + esc(f.v.d) + '</span>' + (q.showR || q.done ? rdg : '') + ' — ' + esc(f.v.ru) + '</div>';
       body = '<div class="rule"><b lang="ja">' + esc(FORM_INFO[f.kind][0]) + '</b> — ' + esc(FORM_INFO[f.kind][1]) + '.</div>' + examplesHtml([f.e]);
     } else {
       var v = q.it;
-      h += '<section class="sheet"><div class="kicker">Что значит глагол?</div><div class="big" lang="ja">' + esc(v.d) + '</div>';
+      h += '<section class="' + sheetCls(q, fx) + '"><div class="kicker">Что значит глагол?</div><div class="big" lang="ja">' + esc(v.d) + '</div>';
       h += '<div class="sub">' + (needR && (q.showR || q.done) ? esc(v.r) : '') + '</div>';
       body = '<div class="rule"><b lang="ja">' + esc(v.d) + '</b>' + rdg + ' — ' + esc(v.ru) + '</div><div class="small">' + esc(groupText(v)) + '. В приложении встречается так:</div><div class="fx">' + v.f.map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div>' + examplesHtml(v.ex);
     }
     h += '<div class="links lc">';
     if (needR && !q.done) h += '<button class="link" data-act="vread">' + (q.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
     h += '<button class="link" data-act="vsay">Послушать</button></div></section>';
-    h += choiceButtons(q, 'vans');
-    if (q.done) h += verdictHtml(q, body, 'vnext');
+    h += choiceButtons(q, 'vans', fx);
+    if (q.done) h += verdictHtml(q, body, 'vnext', fx);
     return h;
   }
   function verbListHtml(V) {
@@ -950,8 +1281,8 @@ label{font-size:.85rem;color:var(--mute)}
     for (var n = 0; n < 5 && order.slice(0, toks.length).join() === idx.slice(0, toks.length).join(); n++) order = shuffle(idx);
     bq = { it: { id: x.id }, i: x.i, item: it, toks: toks, tiles: tiles, order: order, picked: [], done: false, showR: settings.reading, say: filled(x.i) };
   }
-  function tileHtml(t, act, k, showR, used) {
-    return '<button class="tl' + (used ? ' used' : '') + '" lang="ja" data-act="' + act + '" data-k="' + k + '"' + (used ? ' disabled' : '') + '>' +
+  function tileHtml(t, act, k, showR, used, pop) {
+    return '<button class="tl' + (used ? ' used' : '') + (pop ? ' pop' : '') + '" lang="ja" data-act="' + act + '" data-k="' + k + '"' + (used ? ' disabled' : '') + '>' +
       (showR && t.rd ? '<small>' + esc(t.rd) + '</small>' : '') + esc(t.s) + '</button>';
   }
   function checkBuild() {
@@ -975,34 +1306,61 @@ label{font-size:.85rem;color:var(--mute)}
   }
   function renderBuild() {
     if (!bq) newBuild();
-    var q = bq, it = q.item, a0 = it.a[0];
-    var h = noticeHtml() + '<button class="back" data-tab="home">‹ Разделы</button>' + meterHtml();
+    var q = bq, it = q.item, a0 = it.a[0], fx = fxOnce(q);
+    var h = noticeHtml() + topHtml('home');
     h += '<section class="sheet"><div class="kicker">Собери по-японски</div><div class="task">' + esc(it.ru) + '</div></section>';
     if (!q.done) {
-      h += '<div class="slot">' + q.picked.map(function (k, pos) { return tileHtml(q.tiles[k], 'bdel', pos, q.showR); }).join('') + '</div>';
+      h += '<div class="slot">' + q.picked.map(function (k, pos) { return tileHtml(q.tiles[k], 'bdel', pos, q.showR, false, pos === bPop); }).join('') + '</div>';
+      bPop = -1;
       h += '<div class="tiles">' + q.order.map(function (k) { return tileHtml(q.tiles[k], 'bpick', k, q.showR, q.picked.indexOf(k) >= 0); }).join('') + '</div>';
       h += '<div class="links"><button class="link" data-act="bread">' + (q.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>' + (q.picked.length ? '<button class="link" data-act="bclear">Начать заново</button>' : '') + '</div>';
       if (q.tiles.length > q.toks.length) h += '<div class="small">Одна частица здесь лишняя. Нажми на плитку в ответе, чтобы вернуть её.</div>';
       h += '<button class="primary" data-act="bcheck"' + (q.picked.length === q.toks.length ? '' : ' disabled') + '>Проверить</button>';
       return h;
     }
-    var g = gridHtml(it, a0, !!(q.showR && it.r), '');
-    h += '<section class="sheet">' + g.html + '<div class="links"><button class="link" data-act="bread">' + (q.showR ? 'Скрыть фуригану' : 'Показать фуригану') + '</button><button class="link" data-act="bsay">Послушать</button></div></section>';
+    var g = gridHtml(it, a0, !!(q.showR && it.r), '', fx ? ' pop' : '');
+    h += '<section class="' + sheetCls(q, fx) + '">' + g.html + '<div class="links"><button class="link" data-act="bread">' + (q.showR ? 'Скрыть фуригану' : 'Показать фуригану') + '</button><button class="link" data-act="bsay">Послушать</button></div></section>';
     var body = '';
     if (!q.ok) body += '<div>Твой вариант: <span lang="ja">' + esc(q.got) + '</span></div><div class="small">Правильный порядок — на листе выше.</div>';
     else if (q.alt) body += '<div class="small">Твой порядок тоже правильный. В учебной фразе слова стоят так, как на листе выше.</div>';
     body += '<div class="rule">Главная частица этой фразы — <b lang="ja">' + esc(a0) + '</b>: ' + esc(ruleFor({ id: q.it.id }, a0, 0)) + '</div>';
-    return h + verdictHtml(q, body, 'bnext');
+    return h + verdictHtml(q, body, 'bnext', fx);
   }
 
   function render() {
     var tabs = document.querySelectorAll('#tabs button');
     var nav = /^(practice|words|verbs|build)$/.test(tab) ? 'home' : tab === 'add' ? 'more' : tab;
     for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.tab === nav);
+    // «пилюля» в меню переезжает к активной вкладке, значок подпрыгивает
+    var idx = ['home', 'diary', 'progress', 'more'].indexOf(nav);
+    if (REAL && idx >= 0) {
+      var pill = document.querySelector('#tabs .pill');
+      if (pill) pill.style.transform = 'translateX(' + (idx * 100) + '%)';
+      if (FX && lastNav !== null && lastNav !== idx) {
+        var b = tabs[idx].querySelector('b');
+        if (b) b.animate([{ transform: 'none' }, { transform: 'translateY(-5px) scale(1.15)' }, { transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.3,1.6,.5,1)' });
+      }
+      lastNav = idx;
+    }
     var h = tab === 'practice' ? renderPractice() : tab === 'words' ? renderWords() : tab === 'verbs' ? renderVerbs() : tab === 'build' ? renderBuild() :
       tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : tab === 'progress' ? renderProgress() : tab === 'home' ? renderHome() : renderMore();
     $app.innerHTML = h;
+    afterRender();
     mountYuki();
+  }
+  // Переходы: плитка главного раскрывается в раздел, «‹» сворачивает раздел обратно, вкладки меню сменяются растворением.
+  var SECTIONS = /^(practice|words|verbs|build)$/;
+  function navTo(to, el) {
+    resetArmed = false;
+    var from = tab, go = function () { tab = to; render(); };
+    if (SECTIONS.test(from) && to === 'home') backTo(go);
+    else if (from === 'home' && SECTIONS.test(to) && el && el.dataset && el.dataset.key) openFrom(el, go);
+    else switchTo(go);
+  }
+  function togSet(el, on) {
+    if (!el.classList) { render(); return; }
+    el.classList.toggle('on', on);
+    el.setAttribute('aria-pressed', on);
   }
 
   // ---------- действия ----------
@@ -1049,7 +1407,7 @@ label{font-size:.85rem;color:var(--mute)}
     stats = d.stats || {};
     custom = Array.isArray(d.custom) ? d.custom.filter(validCustom) : [];
     days = d.days && typeof d.days === 'object' ? d.days : {};
-    settings = Object.assign({ reading: false, speak: false, goal: 10 }, d.settings || {});
+    settings = Object.assign({ reading: false, speak: false, goal: 10, theme: 'auto' }, d.settings || {});
     // в старых копиях этих полей нет — тогда разделы начинаются с нуля
     var obj = function (x) { return x && typeof x === 'object' && !Array.isArray(x) ? x : {}; };
     wstats = obj(d.words); vstats = obj(d.verbs); bstats = obj(d.build);
@@ -1059,44 +1417,50 @@ label{font-size:.85rem;color:var(--mute)}
   }
 
   document.addEventListener('click', function (e) {
+    if (busy) return;   // пока идёт переход, нажатия не принимаем
     var t = e.target.closest('[data-tab]');
-    if (t) { tab = t.dataset.tab; resetArmed = false; render(); window.scrollTo(0, 0); return; }
+    // плитка сначала «продавливается», потом раскрывается
+    if (t) { if (FX && t.dataset.key) setTimeout(function () { navTo(t.dataset.tab, t); }, 90); else navTo(t.dataset.tab, t); return; }
     var el = e.target.closest('[data-act]');
     if (!el) return;
     var act = el.dataset.act;
     if (act === 'ans') answer(el.dataset.p);
-    else if (act === 'open') { mode = el.dataset.m; tab = 'practice'; cur = null; next(); window.scrollTo(0, 0); }
-    else if (act === 'next') { next(); window.scrollTo(0, 0); }
+    else if (act === 'open') {
+      var openIt = function () { mode = el.dataset.m; tab = 'practice'; cur = null; next(); };
+      if (FX) setTimeout(function () { openFrom(el, openIt); }, 90); else { openIt(); window.scrollTo(0, 0); }
+    }
+    else if (act === 'next') slideNext(next);
     else if (act === 'reading') { cur.showR = !cur.showR; render(); }
     else if (act === 'mode') { mode = el.dataset.m; cur = null; next(); }
-    else if (act === 'train') { mode = 'mistakes'; tab = 'practice'; cur = null; next(); window.scrollTo(0, 0); }
+    else if (act === 'train') switchTo(function () { mode = 'mistakes'; tab = 'practice'; cur = null; next(); });
     else if (act === 'add') addSentence();
     else if (act === 'delc') delCustom(el.dataset.id);
     else if (act === 'export') exportData();
     else if (act === 'import') { var inp = document.getElementById('imp'); if (inp) inp.click(); }
-    else if (act === 'defread') { settings.reading = !settings.reading; if (cur) cur.showR = settings.reading; saveAll(); render(); }
+    else if (act === 'defread') { settings.reading = !settings.reading; if (cur) cur.showR = settings.reading; saveAll(); togSet(el, settings.reading); }
+    else if (act === 'theme') { settings.theme = el.dataset.v; saveAll(); applyTheme(); render(); }
     else if (act === 'hint') { if (cur && !cur.done) { cur.hint = true; render(); } }
     else if (act === 'goal') { settings.goal = +el.dataset.n; saveAll(); render(); }
     else if (act === 'speak') { sayCurrent(); if (notice) render(); }
-    else if (act === 'defspeak') { settings.speak = !settings.speak; saveAll(); render(); }
+    else if (act === 'defspeak') { settings.speak = !settings.speak; saveAll(); togSet(el, settings.speak); }
     // слова
     else if (act === 'wseg') { wmode = el.dataset.m; render(); }
     else if (act === 'wans') answerChoice(wq, +el.dataset.i, wstats);
-    else if (act === 'wnext') { newWordQ(); render(); window.scrollTo(0, 0); }
+    else if (act === 'wnext') slideNext(function () { newWordQ(); render(); });
     else if (act === 'wread') { if (wq) { wq.showR = !wq.showR; render(); } }
     else if (act === 'wsay') { if (wq) { speak(wq.say); if (notice) render(); } }
     // глаголы
     else if (act === 'vseg') { vmode = el.dataset.m; render(); }
     else if (act === 'vans') answerChoice(vq, +el.dataset.i, vstats);
-    else if (act === 'vnext') { newVerbQ(); render(); window.scrollTo(0, 0); }
+    else if (act === 'vnext') slideNext(function () { newVerbQ(); render(); });
     else if (act === 'vread') { if (vq) { vq.showR = !vq.showR; render(); } }
     else if (act === 'vsay') { if (vq) { speak(vq.say); if (notice) render(); } }
     // собери предложение
-    else if (act === 'bpick') { if (bq && !bq.done && bq.picked.indexOf(+el.dataset.k) < 0) { bq.picked.push(+el.dataset.k); render(); } }
+    else if (act === 'bpick') { if (bq && !bq.done && bq.picked.indexOf(+el.dataset.k) < 0) { bq.picked.push(+el.dataset.k); bPop = bq.picked.length - 1; render(); } }
     else if (act === 'bdel') { if (bq && !bq.done) { bq.picked.splice(+el.dataset.k, 1); render(); } }
     else if (act === 'bclear') { if (bq && !bq.done) { bq.picked = []; render(); } }
     else if (act === 'bcheck') checkBuild();
-    else if (act === 'bnext') { newBuild(); render(); window.scrollTo(0, 0); }
+    else if (act === 'bnext') slideNext(function () { newBuild(); render(); });
     else if (act === 'bread') { if (bq) { bq.showR = !bq.showR; render(); } }
     else if (act === 'bsay') { if (bq) { speak(bq.say); if (notice) render(); } }
     else if (act === 'reset') {
@@ -1120,6 +1484,7 @@ label{font-size:.85rem;color:var(--mute)}
 
   try { if ('speechSynthesis' in window) speechSynthesis.getVoices(); } catch (e) {}
   next();
+  enterFx();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 })();
 </script>
