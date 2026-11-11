@@ -120,6 +120,36 @@ label{font-size:.85rem;color:var(--mute)}
 .pb .t{flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
 .pb .t i{display:block;height:100%;background:var(--accent)}
 .pb .v{width:5.6rem;text-align:right;font-size:.82rem;color:var(--mute)}
+.kicker{font-size:.8rem;color:var(--mute);text-align:center}
+.big{font:600 2.5rem/1.25 var(--jp);text-align:center;margin:6px 0 2px;word-break:keep-all}
+.sub{font-family:var(--jp);text-align:center;color:var(--mute);min-height:1.5em}
+.sub2{text-align:center;font-size:.85rem;color:var(--mute);margin-top:4px}
+.sheet .links.lc{justify-content:center}
+.task{font-size:1.15rem;font-weight:600;text-align:center;margin-top:4px}
+.choices{display:grid;gap:8px}
+.choice{min-height:52px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);font:inherit;text-align:left;padding:10px 14px}
+.choice:not(:disabled):active{background:var(--tint);border-color:var(--accent)}
+.choice.right{border-color:var(--good);color:var(--good);font-weight:600;border-width:2px}
+.choice.wrong{border-color:var(--pen);color:var(--pen);text-decoration:line-through}
+.choice.dim{opacity:.5}
+.slot{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;min-height:66px;padding:8px;border:1px dashed var(--grid);border-radius:8px;background:var(--sheet);margin-bottom:12px}
+.slot:empty:before{content:"Нажимай на плитки по порядку";color:var(--mute);font-size:.88rem;align-self:center}
+.tiles{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.tl{display:inline-flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:48px;min-width:44px;padding:4px 10px 6px;border-radius:8px;border:1px solid var(--line);background:var(--sheet);color:var(--ink);font:1.2rem/1.2 var(--jp)}
+.tl small{font-size:.6rem;line-height:1.2;color:var(--mute)}
+.tl:active{border-color:var(--accent)}
+.slot .tl{border-color:var(--accent);background:var(--tint);animation:fade .15s ease-out}
+.tl.used{visibility:hidden}
+.hl{color:var(--accent);font-weight:700}
+.wrow{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.wrow:first-child{border-top:0;padding-top:0}
+.wrow:last-child{padding-bottom:0}
+.wj{font:1.15rem var(--jp);min-width:5.2rem}
+.wr{font:.85rem var(--jp);color:var(--mute);min-width:5.6rem}
+.wt{flex:1;min-width:8rem;font-size:.9rem}
+.okm{color:var(--good);font-weight:700}
+.fx{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.fx span{font:.85rem var(--jp);border:1px solid var(--line);border-radius:6px;padding:1px 8px;color:var(--mute)}
 @keyframes stamp{0%{transform:scale(1.5) rotate(-8deg);opacity:0}100%{transform:none;opacity:1}}
 @keyframes fade{0%{opacity:0}100%{opacity:1}}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
@@ -134,6 +164,7 @@ label{font-size:.85rem;color:var(--mute)}
   <button data-tab="more"><b lang="ja">他</b><span>Ещё</span></button>
 </nav>
 <script src="data.js"></script>
+<script src="words.js"></script>
 <script>
 (function () {
   'use strict';
@@ -207,7 +238,12 @@ label{font-size:.85rem;color:var(--mute)}
   var custom = LS.get('jp_custom', []);
   var days = LS.get('jp_days', {});
   var settings = Object.assign({ reading: false, speak: false, goal: 10 }, LS.get('jp_settings', {}));
+  // Прогресс разделов «Слова», «Глаголы», «Собери предложение»: отдельные ключи, старые не трогаем.
+  var wstats = LS.get('jp_words', {});
+  var vstats = LS.get('jp_verbs', {});
+  var bstats = LS.get('jp_build', {});
   var tab = 'home', mode = 'all', cur = null, notice = '', resetArmed = false;
+  var wmode = 'quiz', vmode = 'mean', wq = null, vq = null, bq = null;
   var $app = document.getElementById('app');
 
   function esc(s) {
@@ -223,7 +259,15 @@ label{font-size:.85rem;color:var(--mute)}
   }
   function saveAll() {
     LS.set('jp_stats', stats); LS.set('jp_custom', custom); LS.set('jp_days', days); LS.set('jp_settings', settings);
+    LS.set('jp_words', wstats); LS.set('jp_verbs', vstats); LS.set('jp_build', bstats);
   }
+  // Ответ в любом разделе идёт в цель дня и серию. Возвращает true, когда цель только что выполнена.
+  function countDay(ok) {
+    var k = dayKey(), d = days[k] || (days[k] = { n: 0, ok: 0 });
+    d.n++; if (ok) d.ok++;
+    return !!(settings.goal && d.n === settings.goal);
+  }
+  function buzz() { try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {} }
   function allItems() {
     return (window.BASE || []).map(function (s, i) { return Object.assign({ id: 'b' + i }, s); }).concat(custom);
   }
@@ -360,6 +404,39 @@ label{font-size:.85rem;color:var(--mute)}
     return { html: '<div class="grid" lang="ja">' + html + '</div>', ruby: ruby };
   }
   // GRID-END
+  // TOKENS-BEGIN
+  // Нарезка предложения на слова по словарю из words.js: самое длинное совпадение слева направо.
+  var TOKEN_PARTS = ['は','が','を','に','で','へ','と','も','の','や','から','まで','か'];
+  var NUM_RE = /^[0-9０-９]+(時半|時|分|月|円)/;
+  var DICT = null;
+  function buildDict() {
+    var d = {}, max = 0;
+    (window.WORDS || []).forEach(function (x) { if (!x.re) [].concat(x.w).forEach(function (s) { d[s] = 1; }); });
+    (window.VERBS || []).forEach(function (v) { v.f.forEach(function (s) { d[s] = 1; }); });
+    (window.EXTRA_TOKENS || []).concat(TOKEN_PARTS).forEach(function (s) { d[s] = 1; });
+    for (var k in d) max = Math.max(max, k.length);
+    return { d: d, max: max };
+  }
+  function tokenize(text) {
+    if (!DICT) DICT = buildDict();
+    var out = [], i = 0, unk = '';
+    function flush() { if (unk) { out.push({ s: unk, unk: true }); unk = ''; } }
+    while (i < text.length) {
+      var c = text.charAt(i);
+      if (/[。、！？\s]/.test(c)) { flush(); i++; continue; }
+      var m = NUM_RE.exec(text.slice(i)), hit = m ? m[0] : '';
+      for (var L = Math.min(DICT.max, text.length - i); !hit && L > 0; L--) {
+        if (DICT.d[text.substr(i, L)]) hit = text.substr(i, L);
+      }
+      if (!hit) { unk += c; i++; continue; }
+      flush();
+      out.push({ s: hit, p: TOKEN_PARTS.indexOf(hit) >= 0 });
+      i += hit.length;
+    }
+    flush();
+    return out;
+  }
+  // TOKENS-END
 
   // ---------- озвучка ----------
   function speak(text) {
@@ -392,11 +469,9 @@ label{font-size:.85rem;color:var(--mute)}
     var s = stats[it.id] || (stats[it.id] = { w: 0, c: 0, seen: 0, bad: [] });
     s.seen++;
     if (ok) { if (!cur.hint) s.c++; } else { s.w++; s.c = 0; s.bad = [p].concat(s.bad || []).slice(0, 6); }
-    var k = dayKey(), d = days[k] || (days[k] = { n: 0, ok: 0 });
-    d.n++; if (ok) d.ok++;
-    if (settings.goal && d.n === settings.goal) cur.goal = true;
+    if (countDay(ok)) cur.goal = true;
     cur.done = true; cur.chosen = p; cur.ok = ok; cur.msg = rnd(ok ? MSG_OK : MSG_BAD);
-    if (!ok) { try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {} }
+    if (!ok) buzz();
     if (ok && cur.hint) {
       cur.extra = 'Верно, но с подсказкой: в прогресс освоения не засчитываю.';
     } else if (ok && s.w > 0) {
@@ -467,8 +542,10 @@ label{font-size:.85rem;color:var(--mute)}
     h += '<div class="mas"><img src="mascot.png" alt="" width="104"><div class="say">' + esc(greet()) + '</div></div>';
     h += '<button class="tile" data-act="open" data-m="all"><span class="ic" lang="ja">は</span><span class="tx"><b>Частицы</b><span>Освоено ' + mc.m + ' из ' + mc.n + ' предложений</span></span></button>';
     if (k) h += '<button class="tile" data-act="open" data-m="mistakes"><span class="ic" lang="ja">誤</span><span class="tx"><b>Мои ошибки</b><span>' + k + ' в работе — повтори, пока свежо</span></span></button>';
-    h += '<button class="tile" disabled><span class="ic" lang="ja">語</span><span class="tx"><b>Слова</b><span>Скоро</span></span></button>';
-    h += '<button class="tile" disabled><span class="ic" lang="ja">動</span><span class="tx"><b>Глаголы</b><span>Скоро</span></span></button>';
+    var V = vocab(), built = Object.keys(bstats).filter(function (id) { return bstats[id].c > 0; }).length;
+    h += '<button class="tile" data-tab="build"><span class="ic" lang="ja">組</span><span class="tx"><b>Собери предложение</b><span>' + (built ? 'Собрано верно: ' + built : 'Плитки из предложений приложения') + '</span></span></button>';
+    h += '<button class="tile" data-tab="words"><span class="ic" lang="ja">語</span><span class="tx"><b>Слова</b><span>Выучено ' + learned(wstats, V.words) + ' из ' + plural(V.words.length, 'слова', 'слов', 'слов') + '</span></span></button>';
+    h += '<button class="tile" data-tab="verbs"><span class="ic" lang="ja">動</span><span class="tx"><b>Глаголы</b><span>Выучено ' + learned(vstats, V.verbs) + ' из ' + plural(V.verbs.length, 'глагола', 'глаголов', 'глаголов') + ' · формы</span></span></button>';
     return h;
   }
   function renderProgress() {
@@ -552,11 +629,327 @@ label{font-size:.85rem;color:var(--mute)}
     return h;
   }
 
+  // ---------- общие кусочки для «Слов», «Глаголов» и «Собери предложение» ----------
+  function markStat(st, id, ok) {
+    var s = st[id] || (st[id] = { w: 0, c: 0, seen: 0 });
+    s.seen++;
+    if (ok) s.c++; else { s.w++; s.c = 0; }
+    return s;
+  }
+  // тот же принцип, что у предложений: новое и ошибочное выпадает чаще
+  function pickFrom(list, st, prevId) {
+    var cand = list.length > 1 ? list.filter(function (x) { return x.id !== prevId; }) : list;
+    var wt = function (x) { var s = st[x.id]; return s ? Math.max(0.25, 1 + s.w * 2 - s.c) : 1.5; };
+    var tot = cand.reduce(function (a, x) { return a + wt(x); }, 0), r = Math.random() * tot;
+    for (var i = 0; i < cand.length; i++) { r -= wt(cand[i]); if (r <= 0) return cand[i]; }
+    return cand[cand.length - 1];
+  }
+  function learned(st, list) { return list.filter(function (x) { var s = st[x.id]; return s && s.c >= 3; }).length; }
+  function shuffle(a) {
+    a = a.slice();
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  function plural(n, one, few, many) {
+    var a = n % 10, b = n % 100;
+    return n + ' ' + (a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? few : many);
+  }
+  function choicesOf(right, pool) {
+    return shuffle([right].concat(shuffle(uniq(pool).filter(function (x) { return x !== right; })).slice(0, 3)));
+  }
+  function filled(i) { var s = window.BASE[i]; return s.t.replace('＿', s.a[0]); }
+
+  var GROUPS = { 1: 'группа I (у-глагол)', 2: 'группа II (ру-глагол)', 3: 'группа III (неправильный)' };
+  function groupText(v) {
+    var g = GROUPS[v.g];
+    if (v.g === 1 && /[いきしちにひみりえけせてねへめれ]る$/.test(v.r)) g += ', хотя выглядит как ру-глагол';
+    return g;
+  }
+  var FORM_INFO = {
+    masu: ['～ます', 'вежливая форма: делаю (сейчас, обычно или в будущем)'],
+    past: ['～ました', 'вежливое прошедшее: сделал'],
+    neg: ['～ません', 'вежливое отрицание: не делаю'],
+    invite: ['～ませんか', 'приглашение: «не хочешь ли…?»'],
+    mashou: ['～ましょう', 'предложение: «давай(те) сделаем»'],
+    tai: ['～たい', 'желание: «хочу сделать»'],
+    teiru: ['～ています', 'действие идёт сейчас или длится состояние'],
+    teita: ['～ていました', 'действие длилось какое-то время в прошлом'],
+    req: ['～てください', 'просьба: «сделайте, пожалуйста»'],
+    te: ['～て', 'て-форма: соединяет со следующим действием'],
+    dict: ['словарная форма', 'простая форма без ます, как в словаре'],
+    pot: ['потенциальная форма', 'возможность: «могу сделать»']
+  };
+  function formKind(v, s, nextTok) {
+    if (v.pot && v.pot.indexOf(s) >= 0) return 'pot';
+    if (/[てで]ください$/.test(s)) return 'req';
+    if (/[てで]いました$/.test(s)) return 'teita';
+    if (/[てで]います$/.test(s)) return 'teiru';
+    if (/ましょう$/.test(s)) return 'mashou';
+    if (/ません$/.test(s)) return nextTok && nextTok.s === 'か' ? 'invite' : 'neg';
+    if (/ました$/.test(s)) return 'past';
+    if (/たい$/.test(s)) return 'tai';
+    if (/ます$/.test(s)) return 'masu';
+    if (/[てで]$/.test(s)) return 'te';
+    return 'dict';
+  }
+
+  // Словарик собирается из предложений: у каждого слова — где оно встречается.
+  var VOCAB = null;
+  function vocab() {
+    if (VOCAB) return VOCAB;
+    var base = window.BASE || [];
+    var segs = base.map(function (s, i) { return tokenize(filled(i)); });
+    var words = (window.WORDS || []).map(function (x) {
+      var vars = [].concat(x.w), re = x.re ? new RegExp(x.re) : null, ex = [];
+      segs.forEach(function (tk, i) {
+        for (var j = 0; j < tk.length; j++) {
+          var s = tk[j].s.replace(/[「」]/g, '');
+          if (re ? re.test(s) : vars.indexOf(s) >= 0) { ex.push({ i: i, j: j }); break; }
+        }
+      });
+      return { id: vars[0], w: vars[0], alt: vars.slice(1), r: x.r, ru: x.ru, k: x.k, ex: ex };
+    });
+    var verbs = [], forms = [], seen = {};
+    (window.VERBS || []).forEach(function (v) {
+      var it = { id: 'm:' + v.d, d: v.d, r: v.r, ru: v.ru, g: v.g, f: v.f, ex: [] };
+      segs.forEach(function (tk, i) {
+        tk.forEach(function (t, j) {
+          if (v.f.indexOf(t.s) < 0) return;
+          if (!it.ex.some(function (e) { return e.i === i; })) it.ex.push({ i: i, j: j });
+          var kind = formKind(v, t.s, tk[j + 1]), s = t.s + (kind === 'invite' ? 'か' : '');
+          if (!seen[s]) { seen[s] = 1; forms.push({ id: 'f:' + s, s: s, kind: kind, v: it, e: { i: i, j: j } }); }
+        });
+      });
+      verbs.push(it);
+    });
+    VOCAB = { segs: segs, words: words, verbs: verbs, forms: forms };
+    return VOCAB;
+  }
+  // пример из предложений приложения с подсвеченным словом
+  function exHtml(e) {
+    var s = window.BASE[e.i], t = filled(e.i), tk = vocab().segs[e.i], at = 0, st = -1, en = -1;
+    for (var j = 0; j <= e.j && j < tk.length; j++) {
+      var p = t.indexOf(tk[j].s, at);
+      if (p < 0) break;
+      if (j === e.j) { st = p; en = p + tk[j].s.length; }
+      at = p + tk[j].s.length;
+    }
+    var h = st < 0 ? esc(t) : esc(t.slice(0, st)) + '<b class="hl">' + esc(t.slice(st, en)) + '</b>' + esc(t.slice(en));
+    return '<div class="item"><div class="sent" lang="ja">' + h + '</div><div class="small">' + esc(s.ru) + '</div></div>';
+  }
+  function examplesHtml(ex) {
+    if (!ex.length) return '';
+    var pick = shuffle(ex).slice(0, 2);
+    return '<div class="card" style="margin-top:12px"><div class="small" style="margin:0 0 8px">Из предложений приложения (всего ' + ex.length + '):</div>' + pick.map(exHtml).join('') + '</div>';
+  }
+  function segHtml(act, curMode, list) {
+    return '<div class="seg">' + list.map(function (x) {
+      return '<button data-act="' + act + '" data-m="' + x[0] + '"' + (curMode === x[0] ? ' class="on"' : '') + '>' + esc(x[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+  function choiceButtons(q, act) {
+    return '<div class="choices">' + q.opts.map(function (o, i) {
+      var cls = 'choice';
+      if (q.done) cls += o === q.right ? ' right' : i === q.chosen ? ' wrong' : ' dim';
+      return '<button class="' + cls + '" data-act="' + act + '" data-i="' + i + '"' + (q.done ? ' disabled' : '') + '>' + esc(o) + '</button>';
+    }).join('') + '</div>';
+  }
+  function verdictHtml(q, body, nextAct) {
+    var h = '<div class="res ' + (q.ok ? 'ok' : 'no') + '" style="margin-top:14px"><div class="mini ' + (q.ok ? 'ok' : 'no') + '"><img src="mascot.png" alt="" width="54"><div class="verdict">' + esc(q.msg) + '</div></div>' + body;
+    if (q.extra) h += '<div class="small">' + esc(q.extra) + '</div>';
+    if (q.goal) h += '<div class="goalmsg"><i class="seal" lang="ja" style="margin:0 6px 0 0">済</i>Цель на сегодня выполнена: ' + settings.goal + ' ответов. Можно остановиться или продолжить.</div>';
+    return h + '<button class="primary" data-act="' + nextAct + '">Дальше</button></div>';
+  }
+  // общий ход для вопросов с выбором ответа
+  function answerChoice(q, i, st) {
+    if (!q || q.done) return;
+    var ok = q.opts[i] === q.right, s = markStat(st, q.it.id, ok);
+    q.done = true; q.chosen = i; q.ok = ok; q.msg = rnd(ok ? MSG_OK : MSG_BAD);
+    q.goal = countDay(ok);
+    q.extra = ok && s.c === 3 ? 'Три верных подряд — считаю выученным.' : '';
+    if (!ok) buzz();
+    saveAll();
+    render();
+    if (settings.speak) { speak(q.say); if (notice) render(); }
+  }
+  function firstReading(r) { return String(r).split(' / ')[0]; }
+
+  // ---------- Слова ----------
+  function newWordQ() {
+    var V = vocab(), it = pickFrom(V.words, wstats, wq && wq.it.id);
+    var same = uniq(V.words.filter(function (x) { return x.k === it.k; }).map(function (x) { return x.ru; }));
+    var pool = same.length >= 4 ? same : V.words.map(function (x) { return x.ru; });
+    wq = { it: it, opts: choicesOf(it.ru, pool), right: it.ru, done: false, showR: settings.reading, say: firstReading(it.r) };
+  }
+  function renderWords() {
+    var V = vocab(), h = noticeHtml() + '<button class="back" data-tab="home">‹ Разделы</button>' + meterHtml();
+    h += segHtml('wseg', wmode, [['quiz', 'Тренировка'], ['list', 'Список (' + V.words.length + ')']]);
+    if (wmode === 'list') return h + wordListHtml(V);
+    if (!wq) newWordQ();
+    var it = wq.it, needR = it.r !== it.w;
+    h += '<section class="sheet"><div class="kicker">' + esc(window.WORD_KINDS[it.k] || '') + ' · что это значит?</div><div class="big" lang="ja">' + esc(it.w) + '</div>';
+    h += '<div class="sub">' + (needR && (wq.showR || wq.done) ? esc(it.r) : '') + '</div><div class="links lc">';
+    if (needR && !wq.done) h += '<button class="link" data-act="wread">' + (wq.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
+    h += '<button class="link" data-act="wsay">Послушать</button></div></section>';
+    h += choiceButtons(wq, 'wans');
+    if (wq.done) {
+      var body = '<div class="rule"><b lang="ja">' + esc(it.w) + '</b>' + (needR ? ' <span lang="ja">(' + esc(it.r) + ')</span>' : '') + ' — ' + esc(it.ru) + '</div>';
+      if (it.alt.length) body += '<div class="small">Встречается и так: <span lang="ja">' + esc(it.alt.join(', ')) + '</span></div>';
+      h += verdictHtml(wq, body + examplesHtml(it.ex), 'wnext');
+    }
+    return h;
+  }
+  function wordListHtml(V) {
+    var h = '<div class="small" style="margin:-4px 0 6px">Выучено ' + learned(wstats, V.words) + ' из ' + V.words.length + '. Слово считается выученным после 3 верных ответов подряд. Здесь только слова из предложений приложения.</div>';
+    Object.keys(window.WORD_KINDS || {}).forEach(function (k) {
+      var list = V.words.filter(function (x) { return x.k === k; });
+      if (!list.length) return;
+      h += '<h3>' + esc(window.WORD_KINDS[k]) + '</h3><div class="card">' + list.map(function (x) {
+        var s = wstats[x.id];
+        return '<div class="wrow"><span class="wj" lang="ja">' + esc(x.w) + '</span><span class="wr" lang="ja">' + esc(x.r) + '</span><span class="wt">' + esc(x.ru) + '</span>' + (s && s.c >= 3 ? '<span class="okm">✓</span>' : '') + '</div>';
+      }).join('') + '</div>';
+    });
+    return h;
+  }
+
+  // ---------- Глаголы ----------
+  function newVerbQ() {
+    var V = vocab();
+    if (vmode === 'form') {
+      var f = pickFrom(V.forms, vstats, vq && vq.it.id), kinds = uniq(V.forms.map(function (x) { return FORM_INFO[x.kind][1]; }));
+      vq = { mode: 'form', it: f, opts: choicesOf(FORM_INFO[f.kind][1], kinds), right: FORM_INFO[f.kind][1], done: false, showR: settings.reading, say: f.s };
+    } else {
+      var v = pickFrom(V.verbs, vstats, vq && vq.it.id);
+      vq = { mode: 'mean', it: v, opts: choicesOf(v.ru, V.verbs.map(function (x) { return x.ru; })), right: v.ru, done: false, showR: settings.reading, say: v.r };
+    }
+  }
+  function renderVerbs() {
+    var V = vocab(), h = noticeHtml() + '<button class="back" data-tab="home">‹ Разделы</button>' + meterHtml();
+    h += segHtml('vseg', vmode, [['mean', 'Значение'], ['form', 'Формы'], ['list', 'Список (' + V.verbs.length + ')']]);
+    if (vmode === 'list') return h + verbListHtml(V);
+    if (!vq || vq.mode !== vmode) newVerbQ();
+    var q = vq, body, vb = q.mode === 'form' ? q.it.v : q.it, needR = vb.r !== vb.d, rdg = needR ? ' <span lang="ja">(' + esc(vb.r) + ')</span>' : '';
+    if (q.mode === 'form') {
+      var f = q.it;
+      h += '<section class="sheet"><div class="kicker">Какая это форма?</div><div class="big" lang="ja">' + esc(f.s) + '</div>';
+      h += '<div class="sub2">от <span lang="ja">' + esc(f.v.d) + '</span>' + (q.showR || q.done ? rdg : '') + ' — ' + esc(f.v.ru) + '</div>';
+      body = '<div class="rule"><b lang="ja">' + esc(FORM_INFO[f.kind][0]) + '</b> — ' + esc(FORM_INFO[f.kind][1]) + '.</div>' + examplesHtml([f.e]);
+    } else {
+      var v = q.it;
+      h += '<section class="sheet"><div class="kicker">Что значит глагол?</div><div class="big" lang="ja">' + esc(v.d) + '</div>';
+      h += '<div class="sub">' + (needR && (q.showR || q.done) ? esc(v.r) : '') + '</div>';
+      body = '<div class="rule"><b lang="ja">' + esc(v.d) + '</b>' + rdg + ' — ' + esc(v.ru) + '</div><div class="small">' + esc(groupText(v)) + '. В приложении встречается так:</div><div class="fx">' + v.f.map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div>' + examplesHtml(v.ex);
+    }
+    h += '<div class="links lc">';
+    if (needR && !q.done) h += '<button class="link" data-act="vread">' + (q.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
+    h += '<button class="link" data-act="vsay">Послушать</button></div></section>';
+    h += choiceButtons(q, 'vans');
+    if (q.done) h += verdictHtml(q, body, 'vnext');
+    return h;
+  }
+  function verbListHtml(V) {
+    var h = '<div class="small" style="margin:-4px 0 6px">Значение выучено у ' + learned(vstats, V.verbs) + ' из ' + V.verbs.length + '. Здесь только глаголы из предложений приложения и только те формы, что в них встречаются.</div><div class="card">';
+    h += V.verbs.map(function (v) {
+      var s = vstats[v.id];
+      return '<div class="wrow"><span class="wj" lang="ja">' + esc(v.d) + '</span><span class="wr" lang="ja">' + esc(v.r) + '</span><span class="wt">' + esc(v.ru) + '</span>' + (s && s.c >= 3 ? '<span class="okm">✓</span>' : '') +
+        '<div style="flex-basis:100%"><div class="small" style="margin-top:2px">' + esc(groupText(v)) + '</div><div class="fx">' + v.f.map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</div></div></div>';
+    }).join('');
+    return h + '</div>';
+  }
+
+  // ---------- Собери предложение ----------
+  // чтение над плиткой: берём разметку фуриганы и режем её по границам слов
+  function tokenReadings(it, toks) {
+    var a0 = it.a[0], tf = it.t.replace('＿', a0), parts = it.r ? furigana(tf, it.r.replace('＿', a0)) : null;
+    if (!parts) return toks.map(function () { return ''; });
+    var starts = [], pos = 0;
+    parts.forEach(function (p) { starts.push(pos); pos += p.s.length; });
+    var at = 0;
+    return toks.map(function (t) {
+      var st = tf.indexOf(t.s, at);
+      if (st < 0) return '';
+      var en = st + t.s.length, rd = '', ok = true;
+      at = en;
+      if (!KANJI_RE.test(t.s)) return '';
+      for (var pi = 0; pi < parts.length; pi++) {
+        var ps = starts[pi], pe = ps + parts[pi].s.length;
+        if (pe <= st || ps >= en) continue;
+        if (parts[pi].k) { if (ps < st || pe > en) ok = false; else rd += parts[pi].rd; }
+        else rd += tf.slice(Math.max(ps, st), Math.min(pe, en));
+      }
+      return ok ? rd : '';
+    });
+  }
+  // куски «слово + падежная частица» можно переставлять, сказуемое остаётся в конце
+  var MOVABLE_AFTER = ['は', 'が', 'を', 'に', 'で', 'へ', 'から', 'まで', 'も'];
+  function phrases(toks) {
+    var args = [], cur = '';
+    toks.forEach(function (t) { cur += t.s; if (t.p && MOVABLE_AFTER.indexOf(t.s) >= 0) { args.push(cur); cur = ''; } });
+    return { args: args.sort().join('|'), pred: cur };
+  }
+  function newBuild() {
+    var V = vocab(), base = window.BASE || [];
+    var list = base.map(function (s, i) { return { id: 'b' + i, i: i }; }).filter(function (x) { return V.segs[x.i].length > 1 && !V.segs[x.i].some(function (t) { return t.unk; }); });
+    var x = pickFrom(list, bstats, bq && bq.it.id), it = base[x.i], toks = V.segs[x.i], rd = tokenReadings(it, toks);
+    var tiles = toks.map(function (t, k) { return { s: t.s, p: t.p, rd: rd[k] }; });
+    var have = toks.map(function (t) { return t.s; });
+    var spare = TOKEN_PARTS.filter(function (p) { return p !== 'か' && have.indexOf(p) < 0 && it.a.indexOf(p) < 0; });
+    if (spare.length) tiles.push({ s: rnd(spare), p: true, rd: '', spare: true });
+    var idx = tiles.map(function (t, k) { return k; }), order = shuffle(idx);
+    for (var n = 0; n < 5 && order.slice(0, toks.length).join() === idx.slice(0, toks.length).join(); n++) order = shuffle(idx);
+    bq = { it: { id: x.id }, i: x.i, item: it, toks: toks, tiles: tiles, order: order, picked: [], done: false, showR: settings.reading, say: filled(x.i) };
+  }
+  function tileHtml(t, act, k, showR, used) {
+    return '<button class="tl' + (used ? ' used' : '') + '" lang="ja" data-act="' + act + '" data-k="' + k + '"' + (used ? ' disabled' : '') + '>' +
+      (showR && t.rd ? '<small>' + esc(t.rd) + '</small>' : '') + esc(t.s) + '</button>';
+  }
+  function checkBuild() {
+    var q = bq;
+    if (!q || q.done || q.picked.length !== q.toks.length) return;
+    var mine = q.picked.map(function (k) { return q.tiles[k]; });
+    var want = q.toks.map(function (t) { return t.s; }).join(''), got = mine.map(function (t) { return t.s; }).join('');
+    var ok = got === want, alt = false;
+    if (!ok && q.item.t.indexOf('、') < 0) {
+      var A = phrases(q.toks), B = phrases(mine);
+      if (A.pred === B.pred && A.args === B.args) ok = alt = true;
+    }
+    var s = markStat(bstats, q.it.id, ok);
+    q.done = true; q.ok = ok; q.alt = alt; q.got = got; q.msg = rnd(ok ? MSG_OK : MSG_BAD);
+    q.goal = countDay(ok);
+    q.extra = ok && s.c === 3 ? 'Три раза подряд без ошибок — предложение собрано уверенно.' : '';
+    if (!ok) buzz();
+    saveAll();
+    render();
+    if (settings.speak) { speak(q.say); if (notice) render(); }
+  }
+  function renderBuild() {
+    if (!bq) newBuild();
+    var q = bq, it = q.item, a0 = it.a[0];
+    var h = noticeHtml() + '<button class="back" data-tab="home">‹ Разделы</button>' + meterHtml();
+    h += '<section class="sheet"><div class="kicker">Собери по-японски</div><div class="task">' + esc(it.ru) + '</div></section>';
+    if (!q.done) {
+      h += '<div class="slot">' + q.picked.map(function (k, pos) { return tileHtml(q.tiles[k], 'bdel', pos, q.showR); }).join('') + '</div>';
+      h += '<div class="tiles">' + q.order.map(function (k) { return tileHtml(q.tiles[k], 'bpick', k, q.showR, q.picked.indexOf(k) >= 0); }).join('') + '</div>';
+      h += '<div class="links"><button class="link" data-act="bread">' + (q.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>' + (q.picked.length ? '<button class="link" data-act="bclear">Начать заново</button>' : '') + '</div>';
+      if (q.tiles.length > q.toks.length) h += '<div class="small">Одна частица здесь лишняя. Нажми на плитку в ответе, чтобы вернуть её.</div>';
+      h += '<button class="primary" data-act="bcheck"' + (q.picked.length === q.toks.length ? '' : ' disabled') + '>Проверить</button>';
+      return h;
+    }
+    var g = gridHtml(it, a0, !!(q.showR && it.r), '');
+    h += '<section class="sheet">' + g.html + '<div class="links"><button class="link" data-act="bread">' + (q.showR ? 'Скрыть фуригану' : 'Показать фуригану') + '</button><button class="link" data-act="bsay">Послушать</button></div></section>';
+    var body = '';
+    if (!q.ok) body += '<div>Твой вариант: <span lang="ja">' + esc(q.got) + '</span></div><div class="small">Правильный порядок — на листе выше.</div>';
+    else if (q.alt) body += '<div class="small">Твой порядок тоже правильный. В учебной фразе слова стоят так, как на листе выше.</div>';
+    body += '<div class="rule">Главная частица этой фразы — <b lang="ja">' + esc(a0) + '</b>: ' + esc(ruleFor({ id: q.it.id }, a0, 0)) + '</div>';
+    return h + verdictHtml(q, body, 'bnext');
+  }
+
   function render() {
     var tabs = document.querySelectorAll('#tabs button');
-    var nav = tab === 'practice' ? 'home' : tab === 'add' ? 'more' : tab;
+    var nav = /^(practice|words|verbs|build)$/.test(tab) ? 'home' : tab === 'add' ? 'more' : tab;
     for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.tab === nav);
-    var h = tab === 'practice' ? renderPractice() : tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : tab === 'progress' ? renderProgress() : tab === 'home' ? renderHome() : renderMore();
+    var h = tab === 'practice' ? renderPractice() : tab === 'words' ? renderWords() : tab === 'verbs' ? renderVerbs() : tab === 'build' ? renderBuild() :
+      tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : tab === 'progress' ? renderProgress() : tab === 'home' ? renderHome() : renderMore();
     $app.innerHTML = h;
   }
 
@@ -583,7 +976,7 @@ label{font-size:.85rem;color:var(--mute)}
     if (cur && cur.item.id === id) { cur = null; next(); } else render();
   }
   function exportData() {
-    var data = JSON.stringify({ v: 1, stats: stats, custom: custom, days: days, settings: settings });
+    var data = JSON.stringify({ v: 1, stats: stats, custom: custom, days: days, settings: settings, words: wstats, verbs: vstats, build: bstats });
     var blob = new Blob([data], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -605,6 +998,10 @@ label{font-size:.85rem;color:var(--mute)}
     custom = Array.isArray(d.custom) ? d.custom.filter(validCustom) : [];
     days = d.days && typeof d.days === 'object' ? d.days : {};
     settings = Object.assign({ reading: false, speak: false, goal: 10 }, d.settings || {});
+    // в старых копиях этих полей нет — тогда разделы начинаются с нуля
+    var obj = function (x) { return x && typeof x === 'object' && !Array.isArray(x) ? x : {}; };
+    wstats = obj(d.words); vstats = obj(d.verbs); bstats = obj(d.build);
+    wq = vq = bq = null;
     saveAll();
     return null;
   }
@@ -630,9 +1027,29 @@ label{font-size:.85rem;color:var(--mute)}
     else if (act === 'goal') { settings.goal = +el.dataset.n; saveAll(); render(); }
     else if (act === 'speak') { sayCurrent(); if (notice) render(); }
     else if (act === 'defspeak') { settings.speak = !settings.speak; saveAll(); render(); }
+    // слова
+    else if (act === 'wseg') { wmode = el.dataset.m; render(); }
+    else if (act === 'wans') answerChoice(wq, +el.dataset.i, wstats);
+    else if (act === 'wnext') { newWordQ(); render(); window.scrollTo(0, 0); }
+    else if (act === 'wread') { if (wq) { wq.showR = !wq.showR; render(); } }
+    else if (act === 'wsay') { if (wq) { speak(wq.say); if (notice) render(); } }
+    // глаголы
+    else if (act === 'vseg') { vmode = el.dataset.m; render(); }
+    else if (act === 'vans') answerChoice(vq, +el.dataset.i, vstats);
+    else if (act === 'vnext') { newVerbQ(); render(); window.scrollTo(0, 0); }
+    else if (act === 'vread') { if (vq) { vq.showR = !vq.showR; render(); } }
+    else if (act === 'vsay') { if (vq) { speak(vq.say); if (notice) render(); } }
+    // собери предложение
+    else if (act === 'bpick') { if (bq && !bq.done && bq.picked.indexOf(+el.dataset.k) < 0) { bq.picked.push(+el.dataset.k); render(); } }
+    else if (act === 'bdel') { if (bq && !bq.done) { bq.picked.splice(+el.dataset.k, 1); render(); } }
+    else if (act === 'bclear') { if (bq && !bq.done) { bq.picked = []; render(); } }
+    else if (act === 'bcheck') checkBuild();
+    else if (act === 'bnext') { newBuild(); render(); window.scrollTo(0, 0); }
+    else if (act === 'bread') { if (bq) { bq.showR = !bq.showR; render(); } }
+    else if (act === 'bsay') { if (bq) { speak(bq.say); if (notice) render(); } }
     else if (act === 'reset') {
       if (!resetArmed) { resetArmed = true; render(); }
-      else { stats = {}; days = {}; resetArmed = false; saveAll(); notice = 'Прогресс и дневник ошибок сброшены.'; cur = null; next(); }
+      else { stats = {}; days = {}; wstats = {}; vstats = {}; bstats = {}; wq = vq = bq = null; resetArmed = false; saveAll(); notice = 'Прогресс и дневник ошибок сброшены.'; cur = null; next(); }
     }
   });
 

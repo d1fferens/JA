@@ -72,6 +72,34 @@ console.log(JSON.stringify(byP));
   }
 }
 
+// 1d. словарик: все предложения режутся на известные слова, все слова и формы из словарика встречаются в предложениях
+eval(fs.readFileSync(dir + '/words.js', 'utf8'));
+{
+  const src = fs.readFileSync(dir + '/index.html', 'utf8');
+  const m = src.match(/\/\/ TOKENS-BEGIN([\s\S]*?)\/\/ TOKENS-END/);
+  if (!m) { console.log('FAIL: TOKENS block not found'); process.exitCode = 1; }
+  else {
+    const tokenize = new Function(m[1] + '; return tokenize;')();
+    const used = new Set();
+    let unk = 0;
+    BASE.forEach((s, i) => {
+      const t = s.t.replace('＿', s.a[0]);
+      const tk = tokenize(t);
+      tk.forEach(x => used.add(x.s.replace(/[「」]/g, '')));
+      if (tk.some(x => x.unk)) { unk++; console.log('UNKNOWN WORDS #' + i, tk.map(x => x.unk ? '[?' + x.s + ']' : x.s).join(' ')); }
+      if (tk.map(x => x.s).join('') !== t.replace(/[。、！？]/g, '')) { unk++; console.log('TOKENS MISMATCH #' + i); }
+    });
+    const lost = [];
+    WORDS.forEach(w => {
+      const ok = w.re ? [...used].some(s => new RegExp(w.re).test(s)) : [].concat(w.w).some(s => used.has(s));
+      if (!ok) lost.push(String(w.w));
+    });
+    VERBS.forEach(v => v.f.forEach(f => { if (!used.has(f)) lost.push(v.d + ':' + f); }));
+    console.log('vocab: words', WORDS.length, '| verbs', VERBS.length, '| sentences with unknown parts', unk, '| unused entries', lost.length);
+    if (unk || lost.length) { console.log('  unused:', lost.join(', ')); process.exitCode = 1; }
+  }
+}
+
 // 2. приложение с заглушкой браузера
 const html = fs.readFileSync(dir + '/index.html', 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
@@ -164,8 +192,73 @@ fields['f-ru'].value = 'Я студент.';
 click('[data-act]', { act: 'add' });
 const cu = JSON.parse(store.jp_custom);
 if (cu.length !== 1 || cu[0].t !== '私＿学生です') fail('custom not saved: ' + JSON.stringify(cu));
+// разделы «Слова», «Глаголы», «Собери предложение»
+const goTab = t => handlers.click({ target: { closest: s => (s === '[data-tab]' ? { dataset: { tab: t } } : null) } });
+goTab('home');
+if (!app.innerHTML.includes('data-tab="words"') || !app.innerHTML.includes('data-tab="verbs"') || !app.innerHTML.includes('data-tab="build"')) fail('new tiles missing on home');
+goTab('words');
+for (let n = 0; n < 15; n++) {
+  if (!app.innerHTML.includes('data-act="wans"')) { fail('word quiz not rendered'); break; }
+  click('[data-act]', { act: 'wans', i: String(n % 4) });
+  if (!/res (ok|no)/.test(app.innerHTML)) fail('no word result');
+  click('[data-act]', { act: 'wnext' });
+}
+click('[data-act]', { act: 'wseg', m: 'list' });
+if ((app.innerHTML.match(/class="wrow"/g) || []).length !== WORDS.length) fail('word list size');
+goTab('verbs');
+for (const vm of ['mean', 'form']) {
+  click('[data-act]', { act: 'vseg', m: vm });
+  for (let n = 0; n < 15; n++) {
+    click('[data-act]', { act: 'vans', i: String(n % 4) });
+    if (!/res (ok|no)/.test(app.innerHTML)) { fail('no verb result in ' + vm); break; }
+    click('[data-act]', { act: 'vnext' });
+  }
+}
+click('[data-act]', { act: 'vseg', m: 'list' });
+if ((app.innerHTML.match(/class="wrow"/g) || []).length !== VERBS.length) fail('verb list size');
+const vst = JSON.parse(store.jp_verbs);
+if (!Object.keys(vst).some(k => k.startsWith('m:')) || !Object.keys(vst).some(k => k.startsWith('f:'))) fail('verb stats not saved');
+// собрать правильно: читаем плитки и перевод с экрана
+{
+  const tokenize = new Function(html.match(/\/\/ TOKENS-BEGIN([\s\S]*?)\/\/ TOKENS-END/)[1] + '; return tokenize;')();
+  goTab('build');
+  let right = 0, alt = 0;
+  for (let n = 0; n < 30; n++) {
+    const ru = (app.innerHTML.match(/class="task">(.*?)<\/div>/) || [])[1];
+    const tiles = [...app.innerHTML.matchAll(/data-act="bpick" data-k="(\d+)">(?:<small>.*?<\/small>)?(.*?)<\/button>/g)].map(m => ({ k: m[1], s: m[2] }));
+    const cand = BASE.filter(s => s.ru.replace(/&quot;/g, '"') === (ru || '').replace(/&quot;/g, '"').replace(/&#39;/g, "'"));
+    const s = cand.find(c => tokenize(c.t.replace('＿', c.a[0])).every(t => tiles.some(x => x.s === t.s)));
+    if (!s) { fail('build: sentence not found for ' + ru); break; }
+    const tk = tokenize(s.t.replace('＿', s.a[0]));
+    let need = tk.map(t => t.s);
+    const spare = tiles.find(t => !need.includes(t.s));
+    // каждый третий раз ставим лишнюю частицу вместо нужной — должно быть «неверно»
+    const useSpare = spare && n % 3 === 2;
+    if (useSpare) { const pi = tk.findIndex(t => t.p); need = need.slice(); need[pi] = spare.s; }
+    // иногда переставляем два первых куска «слово + частица»: так тоже правильно
+    const B = ['は','が','を','に','で','へ','から','まで','も'];
+    let swapped = false;
+    if (!useSpare && n % 3 === 1 && !s.t.includes('、')) {
+      const cut = []; tk.forEach((t, i) => { if (t.p && B.includes(t.s)) cut.push(i); });
+      if (cut.length >= 2) { need = need.slice(cut[0] + 1, cut[1] + 1).concat(need.slice(0, cut[0] + 1), need.slice(cut[1] + 1)); swapped = true; }
+    }
+    const usedK = new Set();
+    for (const w of need) { const x = tiles.find(t => t.s === w && !usedK.has(t.k)); usedK.add(x.k); click('[data-act]', { act: 'bpick', k: x.k }); }
+    if (app.innerHTML.includes('data-act="bcheck" disabled')) fail('build: check disabled when all tiles picked');
+    click('[data-act]', { act: 'bcheck' });
+    const okNow = app.innerHTML.includes('res ok');
+    if (useSpare && okNow) fail('build: spare particle accepted: ' + need.join(' '));
+    if (!useSpare && !okNow) fail('build: correct order marked wrong: ' + need.join(' '));
+    if (swapped && okNow) alt++;
+    if (okNow) right++;
+    click('[data-act]', { act: 'bnext' });
+  }
+  console.log('build: correct', right, '| accepted reordered', alt);
+}
+const bst = JSON.parse(store.jp_build);
+if (!Object.keys(bst).length) fail('build stats not saved');
 // импорт
-const bak = JSON.stringify({ v: 1, stats: st, custom: cu, days: JSON.parse(store.jp_days), settings: { reading: true } });
+const bak =JSON.stringify({ v: 1, stats: st, custom: cu, days: JSON.parse(store.jp_days), settings: { reading: true } });
 global.FileReader = class { readAsText() { this.result = bak; this.onload(); } };
 change({ target: { id: 'imp', files: [{}] } });
 if (!app.innerHTML.includes('Данные загружены')) fail('import notice missing');
