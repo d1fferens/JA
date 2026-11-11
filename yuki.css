@@ -1,0 +1,27 @@
+/* Юки: слои — тень, кольцо позади, персонаж, частицы впереди */
+.yuki{position:relative;display:inline-block;flex:0 0 auto;cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;--yk-shadow:rgba(20,30,40,.26);--yk-cloud:#9aa6b2;--yk-z:#8794a0}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .yuki{--yk-shadow:rgba(0,0,0,.55);--yk-cloud:#6c7884;--yk-z:#a9b4c0}}
+:root[data-theme=dark] .yuki{--yk-shadow:rgba(0,0,0,.55);--yk-cloud:#6c7884;--yk-z:#a9b4c0}
+.yk-mv,.yk-bd{display:block;transform-origin:50% 97%}
+.yk-mv{position:relative;z-index:1}
+/* окошко в один кадр: лента из 4 кадров сдвигается внутри */
+.yk-win{display:block;overflow:hidden;aspect-ratio:330/484}
+.yk-win img{display:block;width:400%;max-width:none;height:auto;pointer-events:none;-webkit-user-drag:none}
+.yk-sh{position:absolute;left:20%;right:20%;bottom:0;height:5%;border-radius:50%;background:radial-gradient(closest-side,var(--yk-shadow),transparent);z-index:0}
+.yk-bk,.yk-fx{position:absolute;inset:0;pointer-events:none}
+.yk-bk{z-index:0}
+.yk-fx{z-index:2}
+.yk-p{position:absolute;display:block;will-change:transform,opacity}
+.yk-p svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 2px rgba(255,255,255,.9)) drop-shadow(0 1px 1.5px rgba(40,30,0,.35))}
+:root[data-theme=dark] .yk-p svg{filter:drop-shadow(0 0 3px rgba(255,200,80,.55))}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .yk-p svg{filter:drop-shadow(0 0 3px rgba(255,200,80,.55))}}
+.yk-ring{border:2px solid #ffd54a;border-radius:50%;box-shadow:0 0 12px rgba(255,213,74,.5)}
+/* дыхание в покое; во сне — глубже и с покачиванием */
+.yuki[data-mood=happy] .yk-bd,.yuki[data-mood=wow] .yk-bd{animation:yk-breath 3.6s ease-in-out infinite}
+.yuki[data-mood=sad] .yk-bd{animation:yk-breath 5s ease-in-out infinite}
+.yuki[data-mood=sleep] .yk-bd{animation:yk-sleep 5.2s ease-in-out infinite}
+.yuki[data-mood=sleep] .yk-sh{animation:yk-shbreath 5.2s ease-in-out infinite}
+@keyframes yk-breath{0%,100%{transform:none}50%{transform:scale(1.012,1.022)}}
+@keyframes yk-sleep{0%,100%{transform:none}40%{transform:rotate(-1.8deg) scale(1.012,1.03)}72%{transform:rotate(.6deg) scale(1.004,1.01)}}
+@keyframes yk-shbreath{0%,100%{transform:none}40%{transform:scale(1.06)}}
+@media (prefers-reduced-motion: reduce){.yuki *{animation:none!important}}

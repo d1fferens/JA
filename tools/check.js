@@ -100,6 +100,18 @@ eval(fs.readFileSync(dir + '/words.js', 'utf8'));
   }
 }
 
+// 1e. Юки: модуль разбирается, ленты кадров на месте и все перечислены в офлайн-кэше
+{
+  try { new Function(fs.readFileSync(dir + '/yuki.js', 'utf8')); } catch (e) { console.log('FAIL: yuki.js syntax', e.message); process.exitCode = 1; }
+  const sw = fs.readFileSync(dir + '/sw.js', 'utf8');
+  const need = ['yuki.js', 'yuki.css', 'yuki-happy.webp', 'yuki-sad.webp', 'yuki-wow.webp', 'yuki-sleep.webp', 'words.js'];
+  const miss = need.filter(f => !fs.existsSync(dir + '/' + f) || !sw.includes("'" + f + "'"));
+  const html0 = fs.readFileSync(dir + '/index.html', 'utf8');
+  if (/mascot\.png/.test(html0)) miss.push('index.html still uses mascot.png');
+  console.log('yuki files ok:', miss.length === 0);
+  if (miss.length) { console.log('FAIL: yuki files', miss.join(', ')); process.exitCode = 1; }
+}
+
 // 2. приложение с заглушкой браузера
 const html = fs.readFileSync(dir + '/index.html', 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);

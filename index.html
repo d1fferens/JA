@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#f1f4ee" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f1317" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="yuki.css">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Частицы</title>
@@ -95,15 +96,13 @@ label{font-size:.85rem;color:var(--mute)}
 #tabs button.on{color:var(--accent);border-top-color:var(--accent);font-weight:600}
 
 .mas{display:flex;align-items:flex-end;gap:10px;margin:4px 0 14px}
-.mas img{width:104px;height:auto;flex:0 0 auto;transform-origin:50% 100%}
-.mas .say{position:relative;background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:34px;font-size:.92rem}
+.mas .yuki{width:122px}
+.mas .say{position:relative;background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:40px;font-size:.92rem;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.mas .say.bump{transform:scale(1.04)}
 .mas .say:before{content:"";position:absolute;left:-7px;bottom:14px;width:12px;height:12px;background:var(--sheet);border-left:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
 .mini{display:flex;align-items:flex-end;gap:10px}
-.mini img{width:54px;height:auto;flex:0 0 auto;transform-origin:50% 100%}
-.mini.ok img{animation:hop .45s ease-out}
-.mini.no img{animation:shake .4s ease-out}
-@keyframes hop{0%{transform:none}35%{transform:translateY(-14px) rotate(-4deg)}70%{transform:translateY(0) rotate(3deg)}100%{transform:none}}
-@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-6px) rotate(-4deg)}40%{transform:translateX(6px) rotate(4deg)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.mini .yuki{width:64px}
+.res .mini{margin-top:6px}
 .tile{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;color:var(--ink);font:inherit}
 .tile .ic{font:600 1.9rem/1 var(--jp);width:44px;text-align:center;color:var(--accent)}
 .tile .tx{flex:1}.tile .tx b{display:block}.tile .tx span{font-size:.85rem;color:var(--mute)}
@@ -165,6 +164,7 @@ label{font-size:.85rem;color:var(--mute)}
 </nav>
 <script src="data.js"></script>
 <script src="words.js"></script>
+<script src="yuki.js"></script>
 <script>
 (function () {
   'use strict';
@@ -505,7 +505,7 @@ label{font-size:.85rem;color:var(--mute)}
       }).join('') + '</div>';
     } else {
       var rules = it.a.map(function (p, i) { return '<b lang="ja">' + esc(p) + '</b> — ' + esc(ruleFor(it, p, i)); }).join('<br>');
-      h += '<div class="res ' + (cur.ok ? 'ok' : 'no') + '"><div class="mini ' + (cur.ok ? 'ok' : 'no') + '"><img src="mascot.png" alt="" width="54"><div class="verdict">' + esc(cur.msg) + '</div></div>';
+      h += '<div class="res ' + (cur.ok ? 'ok' : 'no') + '"><div class="mini">' + ykSlot(cur, cur.goal || /освоенным/.test(cur.extra) ? 'goal' : cur.ok ? 'ok' : 'bad') + '<div class="verdict">' + esc(cur.msg) + '</div></div>';
       if (!cur.ok) h += '<div>Ты выбрал <b lang="ja">' + esc(cur.chosen) + '</b>, а здесь нужно <b lang="ja">' + esc(it.a.join(' или ')) + '</b>.</div><div class="small">Ошибка записана в дневник.</div>';
       else if (it.a.length > 1) h += '<div class="small">Здесь подходят: ' + esc(it.a.join(', ')) + '.</div>';
       h += '<div class="rule">' + rules + '</div>';
@@ -534,12 +534,63 @@ label{font-size:.85rem;color:var(--mute)}
   function greet() {
     var td = days[dayKey()] || { n: 0 }, g = settings.goal || 0;
     if (g && td.n >= g) return 'На сегодня цель выполнена. Можно остановиться, а можно ещё чуть-чуть.';
-    if (td.n > 0) return 'Уже ' + td.n + ' ответов сегодня. Продолжим?';
-    return streak() > 1 ? 'Серия ' + streak() + ' дн. Не прерываем?' : 'Привет! Начнём с пары предложений?';
+    if (td.n > 0) return 'Уже ' + plural(td.n, 'ответ', 'ответа', 'ответов') + ' сегодня. Продолжим?';
+    return streak() > 1 ? 'Серия ' + streak() + ' дн. Не прерываем?' : 'Привет! Я Юки. Начнём с пары предложений?';
   }
+
+  // ---------- Юки ----------
+  // Слот в разметке, после render() в него встраивается Юки (yuki.js). Реакция проигрывается один раз:
+  // при повторной отрисовке того же ответа (например, «Показать фуригану») Юки просто стоит спокойно.
+  function ykSlot(q, kind) {
+    var k = q && q.ykDone ? 'calm' : kind;
+    if (q) q.ykDone = true;
+    return '<span class="yk-slot" data-yuki="' + k + '"></span>';
+  }
+  var napShown = false;   // «спит» показываем один раз за открытие приложения
+  function daysAway() {
+    var keys = Object.keys(days).filter(function (k) { return days[k] && days[k].n > 0; }).sort();
+    if (!keys.length) return 0;
+    var p = keys[keys.length - 1].split('-'), last = new Date(+p[0], +p[1] - 1, +p[2]), now = new Date();
+    return Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - last) / 864e5);
+  }
+  var TAP_LINES = ['Хи-хи, щекотно!', 'Я Юки. Позанимаемся?', 'Ещё одно предложение?', 'がんばって! — «Держись!»', 'Ошибки — это нормально, на них и учатся.'];
+  function bubble(t) {
+    var s = document.querySelector && document.querySelector('.mas .say');
+    if (!s) return;
+    s.textContent = t;
+    s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump');
+    setTimeout(function () { s.classList.remove('bump'); }, 260);
+  }
+  function mountYuki() {
+    if (!window.Yuki || !document.querySelectorAll) return;
+    var slots = document.querySelectorAll('[data-yuki]');
+    for (var i = 0; i < slots.length; i++) (function (el) {
+      var kind = el.dataset.yuki;
+      if (kind === 'home' || kind === 'home-sleep') {
+        var sleepy = kind === 'home-sleep';
+        Yuki.mount(el, sleepy ? 'sleep' : 'happy', {
+          idle: true,
+          onTap: function (was) { bubble(was === 'sleep' ? 'А? Я не сплю! Начнём?' : rnd(TAP_LINES)); }
+        });
+        if (sleepy) {
+          napShown = true;
+          // через несколько секунд замечает, что ты пришёл, и просыпается сама
+          setTimeout(function () {
+            if (document.documentElement.contains(el) && Yuki.get(el) === 'sleep') { Yuki.react(el, 'wake'); bubble('О, привет снова! Начнём с пары предложений?'); }
+          }, 4500);
+        }
+      } else {
+        Yuki.mount(el, 'happy', { onTap: false });
+        if (kind !== 'calm') Yuki.react(el, kind);
+      }
+    })(slots[i]);
+  }
+
   function renderHome() {
     var h = noticeHtml() + meterHtml(), mc = masteredCount(), k = allItems().filter(isActive).length;
-    h += '<div class="mas"><img src="mascot.png" alt="" width="104"><div class="say">' + esc(greet()) + '</div></div>';
+    var away = daysAway(), sleepy = away >= 2 && !napShown;
+    h += '<div class="mas"><span class="yk-slot" data-yuki="' + (sleepy ? 'home-sleep' : 'home') + '"></span><div class="say">' +
+      esc(sleepy ? 'Юки задремала… Тебя не было ' + plural(away, 'день', 'дня', 'дней') + '.' : greet()) + '</div></div>';
     h += '<button class="tile" data-act="open" data-m="all"><span class="ic" lang="ja">は</span><span class="tx"><b>Частицы</b><span>Освоено ' + mc.m + ' из ' + mc.n + ' предложений</span></span></button>';
     if (k) h += '<button class="tile" data-act="open" data-m="mistakes"><span class="ic" lang="ja">誤</span><span class="tx"><b>Мои ошибки</b><span>' + k + ' в работе — повтори, пока свежо</span></span></button>';
     var V = vocab(), built = Object.keys(bstats).filter(function (id) { return bstats[id].c > 0; }).length;
@@ -755,7 +806,7 @@ label{font-size:.85rem;color:var(--mute)}
     }).join('') + '</div>';
   }
   function verdictHtml(q, body, nextAct) {
-    var h = '<div class="res ' + (q.ok ? 'ok' : 'no') + '" style="margin-top:14px"><div class="mini ' + (q.ok ? 'ok' : 'no') + '"><img src="mascot.png" alt="" width="54"><div class="verdict">' + esc(q.msg) + '</div></div>' + body;
+    var h = '<div class="res ' + (q.ok ? 'ok' : 'no') + '" style="margin-top:14px"><div class="mini">' + ykSlot(q, q.goal || (q.ok && q.extra) ? 'goal' : q.ok ? 'ok' : 'bad') + '<div class="verdict">' + esc(q.msg) + '</div></div>' + body;
     if (q.extra) h += '<div class="small">' + esc(q.extra) + '</div>';
     if (q.goal) h += '<div class="goalmsg"><i class="seal" lang="ja" style="margin:0 6px 0 0">済</i>Цель на сегодня выполнена: ' + settings.goal + ' ответов. Можно остановиться или продолжить.</div>';
     return h + '<button class="primary" data-act="' + nextAct + '">Дальше</button></div>';
@@ -951,6 +1002,7 @@ label{font-size:.85rem;color:var(--mute)}
     var h = tab === 'practice' ? renderPractice() : tab === 'words' ? renderWords() : tab === 'verbs' ? renderVerbs() : tab === 'build' ? renderBuild() :
       tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : tab === 'progress' ? renderProgress() : tab === 'home' ? renderHome() : renderMore();
     $app.innerHTML = h;
+    mountYuki();
   }
 
   // ---------- действия ----------

@@ -1,6 +1,6 @@
 // Офлайн-кэш: сначала отдаём из кэша, в фоне обновляем (новая версия появится при следующем открытии).
-const CACHE = 'jp-particles-v10';
-const FILES = ['./', 'index.html', 'data.js', 'words.js', 'manifest.json', 'icon-192.png', 'icon-512.png','mascot.png'];
+const CACHE = 'jp-particles-v11';
+const FILES = ['./', 'index.html', 'data.js', 'words.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'yuki.js', 'yuki.css', 'yuki-happy.webp', 'yuki-sad.webp', 'yuki-wow.webp', 'yuki-sleep.webp'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
