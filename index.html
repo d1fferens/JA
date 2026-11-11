@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2430">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Частицы</title>
+<style>
+:root{--bg:#1b1f2a;--card:#262c3a;--card2:#313949;--text:#eef1f7;--mute:#9aa3b5;--accent:#ff6b6b;--good:#3ecf8e;--bad:#ff5d6c;--line:#3a4256}
+@media (prefers-color-scheme: light){:root{--bg:#f4f5f8;--card:#ffffff;--card2:#eceff5;--text:#1d2330;--mute:#677086;--accent:#e5484d;--good:#1f9d63;--bad:#d93642;--line:#d8dce6}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,"Noto Sans JP","Noto Sans",Roboto,sans-serif}
+#app{max-width:560px;margin:0 auto;padding:16px 16px calc(84px + env(safe-area-inset-bottom))}
+h2{font-size:1.2rem;margin:4px 0 12px}
+h3{font-size:1rem;margin:16px 0 8px}
+.top,.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chips{margin:8px 0 12px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.85rem;color:var(--mute)}
+.chip b{color:var(--text)}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:14px}
+.seg button{flex:1;border:0;background:none;color:var(--mute);padding:9px 6px;border-radius:9px;font:inherit;font-size:.9rem}
+.seg button.on{background:var(--card2);color:var(--text);font-weight:600}
+.seg button:disabled{opacity:.4}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px}
+.note{background:var(--card2);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:.9rem}
+.sent{font-size:1.75rem;line-height:1.5;letter-spacing:.02em}
+.sent.sm{font-size:1.2rem}
+.read{font-size:1.05rem;color:var(--mute);margin-top:6px}
+.ru{margin-top:12px;color:var(--mute)}
+.blank{display:inline-block;min-width:1.6em;border-bottom:3px solid var(--accent);vertical-align:-2px;margin:0 2px}
+.fill{color:var(--good);border-bottom:3px solid var(--good);padding:0 2px;font-weight:700}
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.opts button{height:58px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--text);font:inherit;font-size:1.4rem}
+.opts button:active{background:var(--card2);transform:scale(.97)}
+.primary,.danger,.filebtn{display:block;width:100%;height:52px;line-height:52px;text-align:center;border:0;border-radius:14px;font:inherit;font-weight:600;font-size:1.05rem;margin-top:12px;cursor:pointer}
+.primary{background:var(--accent);color:#fff}
+.primary:disabled{opacity:.4}
+.danger{background:var(--card2);color:var(--bad)}
+.filebtn{background:var(--card2);color:var(--text)}
+.link{background:none;border:0;color:var(--accent);padding:8px 0 0;font:inherit;font-size:.9rem}
+.res.ok{border-color:var(--good)}
+.res.no{border-color:var(--bad)}
+.verdict{font-weight:700;font-size:1.15rem;margin-bottom:6px}
+.res.ok .verdict{color:var(--good)}
+.res.no .verdict{color:var(--bad)}
+.rule{margin:10px 0 6px}
+.small{font-size:.9rem;color:var(--mute);margin-top:4px}
+.item{border-top:1px solid var(--line);padding:12px 0}
+.item:first-child{border-top:0;padding-top:0}
+.item:last-child{padding-bottom:0}
+.sw{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--text);font-size:1rem}
+.tog{border:1px solid var(--line);background:var(--card2);color:var(--mute);border-radius:999px;padding:6px 16px;font:inherit}
+.tog.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+textarea,input[type=text],select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;margin:4px 0 12px}
+label{font-size:.85rem;color:var(--mute)}
+.row{display:flex;gap:10px}
+.row>div{flex:1}
+#tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+#tabs button{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-size:.85rem;padding:14px 4px}
+#tabs button.on{color:var(--accent);font-weight:700}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav id="tabs">
+  <button data-tab="practice">Практика</button>
+  <button data-tab="diary">Дневник</button>
+  <button data-tab="add">Добавить</button>
+  <button data-tab="more">Ещё</button>
+</nav>
+<script src="data.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var PARTS = ['は','が','を','に','で','へ','と','も','の','や','から','まで','か'];
+  var RULES = {
+    'は': 'Тема предложения: «что касается…». Читается «ва».',
+    'が': 'Подлежащее. Обязательна после すき, わかる, ほしい, できる и в «есть/находится» (います・あります).',
+    'を': 'Прямое дополнение: на что направлено действие. Читается «о».',
+    'に': 'Точное время, пункт назначения, где что-то находится или живёт кто-то, адресат действия.',
+    'で': 'Место, где происходит действие, или средство: чем, на чём, на каком языке.',
+    'へ': 'Направление движения (читается «э»). Почти всегда заменяется на に.',
+    'と': '«С кем» или полный список «и». Ещё цитата перед 言う.',
+    'も': '«Тоже, также». Занимает место は, が или を.',
+    'の': 'Принадлежность или связь двух существительных: «чей, какой».',
+    'や': 'Неполный список: «и то, и это, и ещё что-то».',
+    'から': '«Из, с, от»: начало во времени или в пространстве, а ещё «от кого».',
+    'まで': '«До»: конец во времени или в пространстве.',
+    'か': 'Вопросительная частица в конце предложения.'
+  };
+  var MSG_OK = ['Верно.', 'Точно!', 'Да, именно так.', 'В точку.', 'Чисто сработано.', 'Есть!'];
+  var MSG_BAD = ['Мимо.', 'Не то.', 'Тут легко запутаться.', 'Почти, но нет.', 'Ошибка — зато теперь запомнится.'];
+
+  var LS = {
+    get: function (k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  var stats = LS.get('jp_stats', {});
+  var custom = LS.get('jp_custom', []);
+  var days = LS.get('jp_days', {});
+  var settings = Object.assign({ reading: false }, LS.get('jp_settings', {}));
+  var tab = 'practice', mode = 'all', cur = null, notice = '', resetArmed = false;
+  var $app = document.getElementById('app');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+  function dayKey(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function saveAll() {
+    LS.set('jp_stats', stats); LS.set('jp_custom', custom); LS.set('jp_days', days); LS.set('jp_settings', settings);
+  }
+  function allItems() {
+    return (window.BASE || []).map(function (s, i) { return Object.assign({ id: 'b' + i }, s); }).concat(custom);
+  }
+  function isActive(it) { var s = stats[it.id]; return !!s && s.w > 0 && s.c < 3; }
+  function noticeHtml() {
+    if (!notice) return '';
+    var h = '<div class="note">' + esc(notice) + '</div>';
+    notice = '';
+    return h;
+  }
+  function streak() {
+    var n = 0, d = new Date();
+    if (!days[dayKey(d)]) d.setDate(d.getDate() - 1);
+    while (days[dayKey(d)]) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+  function sentHtml(text, fill) {
+    var i = text.indexOf('＿');
+    if (i < 0) return esc(text);
+    var mid = fill ? '<b class="fill">' + esc(fill) + '</b>' : '<span class="blank"></span>';
+    return esc(text.slice(0, i)) + mid + esc(text.slice(i + 1));
+  }
+
+  // ---------- выбор следующего предложения ----------
+  function weight(it) {
+    var s = stats[it.id];
+    if (!s) return 1.5;
+    return Math.max(0.25, 1 + s.w * 2 - s.c);
+  }
+  function pool() {
+    var all = allItems();
+    if (mode === 'mistakes') {
+      var p = all.filter(isActive);
+      if (p.length) return p;
+      mode = 'all';
+      notice = 'Все ошибки отработаны — вернул общий режим.';
+    }
+    return all;
+  }
+  function pick() {
+    var p = pool();
+    var cand = p.length > 1 && cur && cur.item ? p.filter(function (it) { return it.id !== cur.item.id; }) : p;
+    var tot = cand.reduce(function (a, it) { return a + weight(it); }, 0), r = Math.random() * tot;
+    for (var i = 0; i < cand.length; i++) { r -= weight(cand[i]); if (r <= 0) return cand[i]; }
+    return cand[cand.length - 1];
+  }
+  function next() {
+    var item = pick();
+    cur = { item: item, done: false, chosen: null, ok: null, showR: settings.reading, msg: '', extra: '' };
+    render();
+  }
+
+  // ---------- ответ ----------
+  function answer(p) {
+    if (!cur || cur.done) return;
+    var it = cur.item, ok = it.a.indexOf(p) >= 0;
+    var s = stats[it.id] || (stats[it.id] = { w: 0, c: 0, seen: 0, bad: [] });
+    s.seen++;
+    if (ok) { s.c++; } else { s.w++; s.c = 0; s.bad = [p].concat(s.bad || []).slice(0, 6); }
+    var k = dayKey(), d = days[k] || (days[k] = { n: 0, ok: 0 });
+    d.n++; if (ok) d.ok++;
+    cur.done = true; cur.chosen = p; cur.ok = ok; cur.msg = rnd(ok ? MSG_OK : MSG_BAD);
+    if (ok && s.w > 0) {
+      cur.extra = s.c >= 3
+        ? 'Это предложение было в дневнике ошибок. Три верных подряд — считаю освоенным.'
+        : 'Из дневника ошибок. До «освоено» осталось верных ответов подряд: ' + (3 - s.c) + '.';
+    }
+    saveAll();
+    render();
+  }
+
+  // ---------- экраны ----------
+  function renderPractice() {
+    var it = cur.item, k = allItems().filter(isActive).length, td = days[dayKey()] || { n: 0, ok: 0 };
+    var tn = 0, tok = 0;
+    for (var d in days) { tn += days[d].n; tok += days[d].ok; }
+    var h = noticeHtml();
+    h += '<div class="top"><div class="chip">Сегодня: <b>' + td.n + '</b></div><div class="chip">Серия: <b>' + streak() + '</b> дн.</div><div class="chip">Точность: <b>' + (tn ? Math.round(tok / tn * 100) + '%' : '—') + '</b></div></div>';
+    h += '<div class="seg"><button data-act="mode" data-m="all"' + (mode === 'all' ? ' class="on"' : '') + '>Все предложения</button><button data-act="mode" data-m="mistakes"' + (mode === 'mistakes' ? ' class="on"' : '') + (k ? '' : ' disabled') + '>Мои ошибки (' + k + ')</button></div>';
+    var fill = cur.done ? (cur.ok ? cur.chosen : it.a[0]) : null;
+    h += '<div class="card"><div class="sent">' + sentHtml(it.t, fill) + '</div>';
+    if (cur.showR && it.r) h += '<div class="read">' + sentHtml(it.r, fill) + '</div>';
+    h += '<div class="ru">' + esc(it.ru) + '</div>';
+    if (it.r) h += '<button class="link" data-act="reading">' + (cur.showR ? 'Скрыть чтение' : 'Показать чтение') + '</button>';
+    h += '</div>';
+    if (!cur.done) {
+      h += '<div class="opts">' + PARTS.map(function (p) { return '<button data-act="ans" data-p="' + p + '">' + p + '</button>'; }).join('') + '</div>';
+    } else {
+      var rules = it.a.map(function (p) { return '<b>' + esc(p) + '</b> — ' + esc(RULES[p] || ''); }).join('<br>');
+      h += '<div class="card res ' + (cur.ok ? 'ok' : 'no') + '"><div class="verdict">' + esc(cur.msg) + '</div>';
+      if (!cur.ok) h += '<div>Ты выбрал <b>' + esc(cur.chosen) + '</b>, а здесь нужно <b>' + esc(it.a.join(' или ')) + '</b>.</div><div class="small">Ошибка записана в дневник.</div>';
+      else if (it.a.length > 1) h += '<div class="small">Здесь подходят: ' + esc(it.a.join(', ')) + '.</div>';
+      h += '<div class="rule">' + rules + '</div>';
+      if (it.n) h += '<div class="small">' + esc(it.n) + '</div>';
+      if (cur.extra) h += '<div class="small">' + esc(cur.extra) + '</div>';
+      h += '<button class="primary" data-act="next">Дальше</button></div>';
+    }
+    return h;
+  }
+
+  function rowHtml(it) {
+    var s = stats[it.id];
+    return '<div class="item"><div class="sent sm">' + sentHtml(it.t, it.a[0]) + '</div><div class="small">' + esc(it.ru) + '</div><div class="small">Ошибок: <b>' + s.w + '</b> · твои ответы: ' + esc(uniq(s.bad || []).join(', ')) + '</div></div>';
+  }
+  function renderDiary() {
+    var h = noticeHtml() + '<h2>Дневник ошибок</h2>';
+    var rows = allItems().filter(function (it) { return stats[it.id] && stats[it.id].w > 0; });
+    if (!rows.length) return h + '<div class="card small">Пока пусто. Ошибки появятся здесь сами, вносить ничего не нужно.</div>';
+    var act = rows.filter(isActive).sort(function (a, b) { return stats[b.id].w - stats[a.id].w; });
+    var done = rows.filter(function (it) { return !isActive(it); });
+    var byP = {};
+    rows.forEach(function (it) { var p = it.a[0]; byP[p] = (byP[p] || 0) + stats[it.id].w; });
+    var top = Object.keys(byP).sort(function (a, b) { return byP[b] - byP[a]; }).slice(0, 4);
+    h += '<div class="card"><div class="small">Чаще всего ошибаешься на:</div><div class="chips">' +
+      top.map(function (p) { return '<span class="chip"><b>' + esc(p) + '</b> ×' + byP[p] + '</span>'; }).join('') +
+      '</div><button class="primary" data-act="train"' + (act.length ? '' : ' disabled') + '>Тренировать ошибки (' + act.length + ')</button></div>';
+    if (act.length) h += '<h3>В работе</h3><div class="card">' + act.map(rowHtml).join('') + '</div>';
+    if (done.length) h += '<h3>Освоено (3 верных подряд)</h3><div class="card">' + done.map(rowHtml).join('') + '</div>';
+    return h;
+  }
+
+  function renderAdd() {
+    var opts = PARTS.map(function (p) { return '<option value="' + p + '">' + p + '</option>'; }).join('');
+    var h = noticeHtml() + '<h2>Своё предложение</h2><div class="card">';
+    h += '<label>Предложение (на месте частицы поставь ＿ или _)</label><textarea id="f-t" rows="2"></textarea>';
+    h += '<label>Чтение хираганой (необязательно, тоже с ＿)</label><textarea id="f-r" rows="2"></textarea>';
+    h += '<div class="row"><div><label>Правильная частица</label><select id="f-a1">' + opts + '</select></div><div><label>Или ещё подходит</label><select id="f-a2"><option value="">—</option>' + opts + '</select></div></div>';
+    h += '<label>Перевод или смысл (чтобы не было двусмысленности)</label><input type="text" id="f-ru">';
+    h += '<div class="small" id="f-msg"></div><button class="primary" data-act="add">Добавить</button></div>';
+    h += '<h3>Мои предложения (' + custom.length + ')</h3>';
+    if (!custom.length) h += '<div class="card small">Пока нет. Добавляй фразы из учебника, песен или аниме.</div>';
+    else h += '<div class="card">' + custom.map(function (it) {
+      return '<div class="item"><div class="sent sm">' + sentHtml(it.t, it.a[0]) + '</div><div class="small">' + esc(it.ru) + '</div><button class="link" data-act="delc" data-id="' + esc(it.id) + '">Удалить</button></div>';
+    }).join('') + '</div>';
+    return h;
+  }
+
+  function renderMore() {
+    var h = noticeHtml() + '<h2>Ещё</h2>';
+    h += '<div class="card"><div class="sw"><span>Всегда показывать чтение хираганой</span><button class="tog' + (settings.reading ? ' on' : '') + '" data-act="defread">' + (settings.reading ? 'Вкл' : 'Выкл') + '</button></div></div>';
+    h += '<div class="card"><h3>Резервная копия</h3><div class="small">Ошибки, свои предложения и серия хранятся только в этом браузере. Если очистить данные Chrome, всё пропадёт, поэтому иногда сохраняй копию.</div>';
+    h += '<button class="primary" data-act="export">Сохранить копию (файл)</button>';
+    h += '<label class="filebtn">Загрузить копию<input type="file" id="imp" accept="application/json,.json" hidden></label><div class="small">Загрузка заменит текущие данные.</div></div>';
+    h += '<div class="card"><h3>Сброс</h3><button class="danger" data-act="reset" style="margin-top:0">' + (resetArmed ? 'Точно сбросить? Нажми ещё раз' : 'Сбросить прогресс и ошибки') + '</button><div class="small">Свои предложения останутся.</div></div>';
+    h += '<div class="card small">Чтобы поставить на экран: меню Chrome ⋮ → «Установить приложение» или «Добавить на главный экран». После этого работает и без интернета.</div>';
+    return h;
+  }
+
+  function render() {
+    var tabs = document.querySelectorAll('#tabs button');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.tab === tab);
+    var h = tab === 'practice' ? renderPractice() : tab === 'diary' ? renderDiary() : tab === 'add' ? renderAdd() : renderMore();
+    $app.innerHTML = h;
+  }
+
+  // ---------- действия ----------
+  function addSentence() {
+    var g = function (id) { return document.getElementById(id); };
+    var msg = g('f-msg');
+    var norm = function (s) { return s.replace(/[_＿]+/g, '＿').trim(); };
+    var cnt = function (s) { return (s.match(/＿/g) || []).length; };
+    var t = norm(g('f-t').value), r = norm(g('f-r').value), ru = g('f-ru').value.trim();
+    var a = uniq([g('f-a1').value, g('f-a2').value].filter(Boolean));
+    if (cnt(t) !== 1) { msg.textContent = 'В предложении должно быть ровно одно пропущенное место ＿.'; return; }
+    if (r && cnt(r) !== 1) { msg.textContent = 'В чтении тоже нужен ровно один знак ＿.'; return; }
+    if (!ru) { msg.textContent = 'Напиши перевод или смысл: по нему видно, какая частица нужна.'; return; }
+    custom.push({ id: 'c' + Date.now(), t: t, r: r, a: a, ru: ru });
+    saveAll();
+    notice = 'Добавлено, оно уже в общей очереди.';
+    render();
+  }
+  function delCustom(id) {
+    custom = custom.filter(function (it) { return it.id !== id; });
+    delete stats[id];
+    saveAll();
+    if (cur && cur.item.id === id) { cur = null; next(); } else render();
+  }
+  function exportData() {
+    var data = JSON.stringify({ v: 1, stats: stats, custom: custom, days: days, settings: settings });
+    var blob = new Blob([data], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'particles-backup-' + dayKey() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1500);
+    notice = 'Файл копии сохранён (папка «Загрузки»).';
+    render();
+  }
+  function validCustom(c) {
+    return c && typeof c.id === 'string' && typeof c.t === 'string' && typeof c.ru === 'string' &&
+      Array.isArray(c.a) && c.a.length > 0 && c.a.every(function (p) { return PARTS.indexOf(p) >= 0; });
+  }
+  function importData(txt) {
+    var d;
+    try { d = JSON.parse(txt); } catch (e) { return 'Это не похоже на файл копии.'; }
+    if (!d || typeof d !== 'object' || typeof d.stats !== 'object') return 'В файле нет данных прогресса.';
+    stats = d.stats || {};
+    custom = Array.isArray(d.custom) ? d.custom.filter(validCustom) : [];
+    days = d.days && typeof d.days === 'object' ? d.days : {};
+    settings = Object.assign({ reading: false }, d.settings || {});
+    saveAll();
+    return null;
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-tab]');
+    if (t) { tab = t.dataset.tab; resetArmed = false; render(); window.scrollTo(0, 0); return; }
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.dataset.act;
+    if (act === 'ans') answer(el.dataset.p);
+    else if (act === 'next') { next(); window.scrollTo(0, 0); }
+    else if (act === 'reading') { cur.showR = !cur.showR; render(); }
+    else if (act === 'mode') { mode = el.dataset.m; cur = null; next(); }
+    else if (act === 'train') { mode = 'mistakes'; tab = 'practice'; cur = null; next(); window.scrollTo(0, 0); }
+    else if (act === 'add') addSentence();
+    else if (act === 'delc') delCustom(el.dataset.id);
+    else if (act === 'export') exportData();
+    else if (act === 'defread') { settings.reading = !settings.reading; if (cur) cur.showR = settings.reading; saveAll(); render(); }
+    else if (act === 'reset') {
+      if (!resetArmed) { resetArmed = true; render(); }
+      else { stats = {}; days = {}; resetArmed = false; saveAll(); notice = 'Прогресс и дневник ошибок сброшены.'; cur = null; next(); }
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    if (!e.target || e.target.id !== 'imp') return;
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      var err = importData(String(rd.result));
+      notice = err ? err : 'Данные загружены.';
+      tab = 'more'; cur = null; next();
+    };
+    rd.readAsText(f);
+  });
+
+  next();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+})();
+</script>
+</body>
+</html>
